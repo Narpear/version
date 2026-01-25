@@ -1,0 +1,180 @@
+/* Import Google Fonts FIRST */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+@import "tailwindcss";
+
+/* Base Styles */
+body {
+  background-color: #FFF9F0;
+  color: #4A4A4A;
+  font-family: "VT323", monospace;
+}
+
+/* Pixel Button */
+.btn-pixel {
+  padding: 0.75rem 1.5rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75rem;
+  background-color: #FFB5E8;
+  color: #4A4A4A;
+  border: 4px solid #4A4A4A;
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.btn-pixel:hover {
+  box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
+  transform: translate(1px, 1px);
+}
+
+.btn-pixel-secondary {
+  padding: 0.75rem 1.5rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75rem;
+  background-color: #B5DEFF;
+  color: #4A4A4A;
+  border: 4px solid #4A4A4A;
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.btn-pixel-secondary:hover {
+  box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
+  transform: translate(1px, 1px);
+}
+
+.btn-pixel-success {
+  padding: 0.75rem 1.5rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75rem;
+  background-color: #C1FBA4;
+  color: #4A4A4A;
+  border: 4px solid #4A4A4A;
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.btn-pixel-success:hover {
+  box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
+  transform: translate(1px, 1px);
+}
+
+/* Pixel Card */
+.card-pixel {
+  background-color: white;
+  border: 4px solid #4A4A4A;
+  box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
+  padding: 1.5rem;
+}
+
+/* Pixel Input */
+.input-pixel {
+  padding: 0.75rem 1rem;
+  border: 4px solid #4A4A4A;
+  background-color: white;
+  color: #4A4A4A;
+  font-family: "VT323", monospace;
+  font-size: 1.125rem;
+  transition: all 0.2s;
+}
+
+.input-pixel:focus {
+  outline: none;
+  border-color: #FFB5E8;
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
+}
+
+/* Container */
+.container-pixel {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Headings */
+.heading-pixel {
+  font-family: "Press Start 2P", cursive;
+  font-size: 1.5rem;
+  color: #4A4A4A;
+  margin-bottom: 1.5rem;
+}
+
+.subheading-pixel {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.875rem;
+  color: #4A4A4A;
+  margin-bottom: 1rem;
+}
+
+/* Badge */
+.badge-pixel {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75rem;
+  background-color: #BFFCC6;
+  border: 2px solid #4A4A4A;
+}
+
+/* Progress Bar */
+.progress-pixel {
+  width: 100%;
+  height: 2rem;
+  background-color: white;
+  border: 4px solid #4A4A4A;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-pixel-fill {
+  height: 100%;
+  background-color: #FFB5E8;
+  border-right: 4px solid #4A4A4A;
+  transition: width 0.3s;
+}
+
+/* Text Utilities */
+.text-pixel-xs {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.5rem;
+}
+
+.text-pixel-sm {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.625rem;
+}
+
+.text-pixel-base {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.75rem;
+}
+
+.text-pixel-lg {
+  font-family: "Press Start 2P", cursive;
+  font-size: 0.875rem;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FFF9F0;
+  border: 2px solid #4A4A4A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FFB5E8;
+  border: 2px solid #4A4A4A;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B5DEFF;
+}
