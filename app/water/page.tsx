@@ -392,7 +392,7 @@ export default function WaterPage() {
       {/* Hydration Tips */}
       <Card className="bg-lavender/30">
         <div className="flex gap-4">
-          <Info size={32} className="text-primary flex-shrink-0 mt-1" />
+          <Info size={32} className="text-primary shrink-0 mt-1" />
           <div>
             <h3 className="font-mono font-bold text-lg mb-3">Tips for Staying Hydrated</h3>
             <ul className="text-pixel-sm space-y-2 text-darkgray/90">

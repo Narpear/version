@@ -461,7 +461,7 @@ export default function ProgressPage() {
               <Card key={i} className="hover:shadow-lg transition-all">
                 <div className="flex gap-3">
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-darkgray flex-shrink-0"
+                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-darkgray shrink-0"
                     style={{ backgroundColor: tip.color }}
                   >
                     <IconComponent size={24} className="text-darkgray" />

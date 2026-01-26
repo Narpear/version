@@ -493,7 +493,7 @@ export default function SkincarePage() {
               <Card key={i} className="hover:shadow-lg transition-all">
                 <div className="flex gap-3">
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-darkgray flex-shrink-0"
+                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-darkgray shrink-0"
                     style={{ backgroundColor: tip.color }}
                   >
                     <IconComponent size={24} className="text-darkgray" />
@@ -512,7 +512,7 @@ export default function SkincarePage() {
       {/* General Tips */}
       <Card className="bg-lavender/30">
         <div className="flex gap-4">
-          <Sparkles size={32} className="text-primary flex-shrink-0 mt-1" />
+          <Sparkles size={32} className="text-primary shrink-0 mt-1" />
           <div>
             <h3 className="font-mono font-bold text-lg mb-3">Remember</h3>
             <ul className="text-pixel-sm space-y-2 text-darkgray/90">
