@@ -58,7 +58,7 @@ export interface FoodLog {
   carbs_g: number;
   fats_g: number;
   is_healthy: boolean;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+  meal_type: 'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack' | null;
 }
 
 export interface SkincareLog {
@@ -76,7 +76,7 @@ export interface FoodTemplate {
   id: string;
   user_id: string;
   template_name: string;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+  meal_type: 'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack' | null;
   calories: number;
   protein_g: number;
   carbs_g: number;

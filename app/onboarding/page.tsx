@@ -124,7 +124,7 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <h1 className="heading-pixel text-center mb-4">Welcome, {user.name}! 👋</h1>
+        <h1 className="heading-pixel text-center mb-4">Welcome, {user.name}!</h1>
         <p className="text-center font-mono text-lg mb-6">
           Let's set up your profile
         </p>

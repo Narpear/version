@@ -98,7 +98,7 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
         <div className="text-center py-6">
           <p className="font-mono text-lg mb-2">Ready to start tracking?</p>
           <p className="font-mono text-sm text-darkgray/70">
-            {!activeGoal && "💡 Set a goal in Profile to get personalized insights!"}
+            {!activeGoal && "Set a goal in Profile to get personalized insights."}
           </p>
         </div>
       </Card>
@@ -187,10 +187,10 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
   };
 
   return (
-    <Card title="📊 This Week's Summary">
+    <Card title="This Week's Summary">
       {!activeGoal && (
         <div className="mb-4 p-3 bg-warning/20 border-2 border-darkgray">
-          <p className="font-mono text-sm">💡 Set a goal in Profile to get personalized weekly insights!</p>
+          <p className="font-mono text-sm">Set a goal in Profile to get personalized weekly insights.</p>
         </div>
       )}
 
@@ -213,7 +213,7 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
 
         {/* Workouts Completed */}
         <div className="text-center p-3 border-2 border-darkgray bg-secondary/20">
-          <p className="text-2xl mb-2">💪</p>
+          <p className="text-2xl mb-2"> </p>
           <p className="text-pixel-sm text-darkgray/70 mb-1">Workouts Done</p>
           <p className="font-mono text-3xl">{workoutsCompleted}</p>
           <p className="text-pixel-xs">this week</p>
@@ -280,42 +280,42 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
         {daysLogged === 7 && (
           <div className="p-3 bg-success border-2 border-darkgray flex items-center gap-3">
             <Award size={24} className="text-darkgray" />
-            <p className="font-mono text-sm">🎉 Perfect Week! Logged every day!</p>
+            <p className="font-mono text-sm">Perfect week. Logged every day.</p>
           </div>
         )}
         {daysHitGoal >= 5 && (
           <div className="p-3 bg-success border-2 border-darkgray flex items-center gap-3">
             <Target size={24} className="text-darkgray" />
             <p className="font-mono text-sm">
-              {goalType === 'loss' && `🔥 ${daysHitGoal} days hit deficit goal!`}
-              {goalType === 'gain' && `💪 ${daysHitGoal} days hit surplus goal!`}
-              {goalType === 'maintenance' && `⚖️ ${daysHitGoal} days stayed balanced!`}
-              {!goalType && `✅ ${daysHitGoal} days tracked!`}
+              {goalType === 'loss' && `${daysHitGoal} days hit deficit goal.`}
+              {goalType === 'gain' && `${daysHitGoal} days hit surplus goal.`}
+              {goalType === 'maintenance' && `${daysHitGoal} days stayed balanced.`}
+              {!goalType && `${daysHitGoal} days tracked.`}
             </p>
           </div>
         )}
         {currentStreak >= 7 && (
           <div className="p-3 bg-primary border-2 border-darkgray flex items-center gap-3">
             <Flame size={24} className="text-darkgray" />
-            <p className="font-mono text-sm">🔥 {currentStreak} day streak! You're on fire!</p>
+            <p className="font-mono text-sm">{currentStreak} day streak.</p>
           </div>
         )}
         {workoutsCompleted >= 5 && (
           <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
-            <span className="text-2xl">💪</span>
-            <p className="font-mono text-sm">Strong week! {workoutsCompleted} workouts completed!</p>
+            <span className="text-2xl"> </span>
+            <p className="font-mono text-sm">Strong week. {workoutsCompleted} workouts completed.</p>
           </div>
         )}
         {daysHitWaterGoal >= 5 && (
           <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
-            <span className="text-2xl">💧</span>
-            <p className="font-mono text-sm">Hydration champion! {daysHitWaterGoal} days hit water goal!</p>
+            <span className="text-2xl"> </span>
+            <p className="font-mono text-sm">Hydration goal met on {daysHitWaterGoal} days.</p>
           </div>
         )}
         {healthyMealPercent >= 80 && mealsLogged >= 10 && (
           <div className="p-3 bg-success border-2 border-darkgray flex items-center gap-3">
-            <span className="text-2xl">🥗</span>
-            <p className="font-mono text-sm">Nutrition superstar! {healthyMealPercent}% healthy meals!</p>
+            <span className="text-2xl"> </span>
+            <p className="font-mono text-sm">{healthyMealPercent}% healthy meals.</p>
           </div>
         )}
       </div>
@@ -323,12 +323,12 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
       {/* Motivational Messages */}
       {consistencyScore < 50 && (
         <div className="mt-4 p-3 bg-warning/20 border-2 border-darkgray">
-          <p className="font-mono text-sm">💪 You've got this! Try logging every day this week.</p>
+          <p className="font-mono text-sm">Try logging every day this week.</p>
         </div>
       )}
       {consistencyScore >= 80 && (
         <div className="mt-4 p-3 bg-success/20 border-2 border-darkgray">
-          <p className="font-mono text-sm">⭐ You're crushing it this week! Keep up the amazing work!</p>
+          <p className="font-mono text-sm">Great consistency this week. Keep it up.</p>
         </div>
       )}
     </Card>

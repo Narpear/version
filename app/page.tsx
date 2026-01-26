@@ -176,30 +176,30 @@ export default function HomePage() {
   const getBalanceMessage = () => {
     if (!balance) return null;
     if (activeGoal?.goal_type === 'loss') {
-      if (balance >= 500) return '🔥 Excellent!';
-      if (balance >= 300) return '✅ Great!';
-      if (balance >= 100) return '👍 Good';
-      if (balance >= 0) return '⚠️ Low';
-      return '❌ Surplus';
+      if (balance >= 500) return 'Excellent';
+      if (balance >= 300) return 'Great';
+      if (balance >= 100) return 'Good';
+      if (balance >= 0) return 'Low';
+      return 'Surplus';
     }
     if (activeGoal?.goal_type === 'gain') {
-      if (balance <= -500) return '🔥 Excellent!';
-      if (balance <= -300) return '✅ Great!';
-      if (balance <= -100) return '👍 Good';
-      if (balance <= 0) return '⚠️ Low';
-      return '❌ Deficit';
+      if (balance <= -500) return 'Excellent';
+      if (balance <= -300) return 'Great';
+      if (balance <= -100) return 'Good';
+      if (balance <= 0) return 'Low';
+      return 'Deficit';
     }
     if (activeGoal?.goal_type === 'maintenance') {
-      if (Math.abs(balance) <= 100) return '⚖️ Perfect!';
-      if (Math.abs(balance) <= 200) return '✅ Great!';
-      if (Math.abs(balance) <= 300) return '👍 Good';
-      return '⚠️ Off Balance';
+      if (Math.abs(balance) <= 100) return 'Perfect';
+      if (Math.abs(balance) <= 200) return 'Great';
+      if (Math.abs(balance) <= 300) return 'Good';
+      return 'Off Balance';
     }
-    if (balance >= 500) return '🔥 Excellent!';
-    if (balance >= 300) return '✅ Great!';
-    if (balance >= 100) return '👍 Good';
-    if (balance >= 0) return '⚠️ Low';
-    return '❌ Surplus';
+    if (balance >= 500) return 'Excellent';
+    if (balance >= 300) return 'Great';
+    if (balance >= 100) return 'Good';
+    if (balance >= 0) return 'Low';
+    return 'Surplus';
   };
 
   const progressPercent = Math.min(progress * 100, 100);

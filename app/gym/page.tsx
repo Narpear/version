@@ -524,18 +524,18 @@ export default function GymPage() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="font-mono text-lg font-bold mb-2">{log.exercise_name}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
                       {log.sets && log.reps && (
-                        <p>📊 {log.sets} × {log.reps}</p>
+                        <p>{log.sets} × {log.reps}</p>
                       )}
                       {log.weight_kg && (
-                        <p>⚖️ {log.weight_kg} kg</p>
+                        <p>{log.weight_kg} kg</p>
                       )}
-                      <p>🔥 {log.calories_burned} cal</p>
+                      <p>{log.calories_burned} cal</p>
                     </div>
                     {log.notes && (
                       <p className="font-mono text-sm text-darkgray/70 mt-2">
-                        📝 {log.notes}
+                        {log.notes}
                       </p>
                     )}
                   </div>

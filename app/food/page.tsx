@@ -25,7 +25,7 @@ export default function FoodPage() {
 
   // Form state
   const [mealName, setMealName] = useState('');
-  const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
+  const [mealType, setMealType] = useState<'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack'>('breakfast');
   const [calories, setCalories] = useState(0);
   const [protein, setProtein] = useState(0);
   const [carbs, setCarbs] = useState(0);
@@ -264,11 +264,11 @@ export default function FoodPage() {
   const healthyMeals = foodLogs.filter(log => log.is_healthy).length;
 
   // Group by meal type
-  const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+  const mealTypes = ['breakfast', 'brunch', 'lunch', 'dinner', 'snack'] as const;
   const groupedMeals = mealTypes.map(type => ({
     type,
     meals: foodLogs.filter(log => log.meal_type === type),
-    icon: type === 'breakfast' ? '🌅' : type === 'lunch' ? '☀️' : type === 'dinner' ? '🌙' : '🍎'
+    icon: ''
   }));
 
   return (
@@ -312,6 +312,32 @@ export default function FoodPage() {
           Templates ({templates.length})
         </Button>
       </div>
+
+      {/* Daily Summary (moved to top) */}
+      <Card className="mb-6 bg-success/10" title="Daily Summary">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="bg-white">
+            <p className="text-pixel-sm text-darkgray/70 mb-1">Total Calories</p>
+            <p className="font-mono text-2xl">{totalCalories}</p>
+          </Card>
+          <Card className="bg-white">
+            <p className="text-pixel-sm text-darkgray/70 mb-1">Protein</p>
+            <p className="font-mono text-2xl">{totalProtein.toFixed(1)}g</p>
+          </Card>
+          <Card className="bg-white">
+            <p className="text-pixel-sm text-darkgray/70 mb-1">Carbs</p>
+            <p className="font-mono text-2xl">{totalCarbs.toFixed(1)}g</p>
+          </Card>
+          <Card className="bg-white">
+            <p className="text-pixel-sm text-darkgray/70 mb-1">Fats</p>
+            <p className="font-mono text-2xl">{totalFats.toFixed(1)}g</p>
+          </Card>
+          <Card className="bg-white">
+            <p className="text-pixel-sm text-darkgray/70 mb-1">Healthy Meals</p>
+            <p className="font-mono text-2xl">{healthyMeals}/{foodLogs.length}</p>
+          </Card>
+        </div>
+      </Card>
 
       {/* Templates List */}
       {showTemplates && (
@@ -369,6 +395,7 @@ export default function FoodPage() {
                   required
                 >
                   <option value="breakfast">Breakfast</option>
+                  <option value="brunch">Brunch</option>
                   <option value="lunch">Lunch</option>
                   <option value="dinner">Dinner</option>
                   <option value="snack">Snack</option>
@@ -441,34 +468,10 @@ export default function FoodPage() {
         </Card>
       )}
 
-      {/* Daily Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <Card>
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Total Calories</p>
-          <p className="font-mono text-2xl">{totalCalories}</p>
-        </Card>
-        <Card>
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Protein</p>
-          <p className="font-mono text-2xl">{totalProtein.toFixed(1)}g</p>
-        </Card>
-        <Card>
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Carbs</p>
-          <p className="font-mono text-2xl">{totalCarbs.toFixed(1)}g</p>
-        </Card>
-        <Card>
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Fats</p>
-          <p className="font-mono text-2xl">{totalFats.toFixed(1)}g</p>
-        </Card>
-        <Card>
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Healthy Meals</p>
-          <p className="font-mono text-2xl">{healthyMeals}/{foodLogs.length}</p>
-        </Card>
-      </div>
-
       {/* Meals by Type */}
       {groupedMeals.map(({ type, meals, icon }) => (
         meals.length > 0 && (
-          <Card key={type} title={`${icon} ${type.charAt(0).toUpperCase() + type.slice(1)}`} className="mb-6">
+          <Card key={type} title={`${type.charAt(0).toUpperCase() + type.slice(1)}`} className="mb-6">
             <div className="space-y-3">
               {meals.map((meal) => (
                 <div
@@ -481,13 +484,13 @@ export default function FoodPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <p className="font-mono text-lg font-bold">{meal.meal_name}</p>
-                        {meal.is_healthy && <span className="text-sm">✅</span>}
+                        {meal.is_healthy && <span className="text-sm">Healthy</span>}
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
-                        <p>🔥 {meal.calories} cal</p>
-                        {meal.protein_g > 0 && <p>🥩 {meal.protein_g}g protein</p>}
-                        {meal.carbs_g > 0 && <p>🍞 {meal.carbs_g}g carbs</p>}
-                        {meal.fats_g > 0 && <p>🥑 {meal.fats_g}g fats</p>}
+                        <p>{meal.calories} cal</p>
+                        {meal.protein_g > 0 && <p>{meal.protein_g}g protein</p>}
+                        {meal.carbs_g > 0 && <p>{meal.carbs_g}g carbs</p>}
+                        {meal.fats_g > 0 && <p>{meal.fats_g}g fats</p>}
                       </div>
                     </div>
                     <button

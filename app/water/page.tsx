@@ -166,7 +166,7 @@ export default function WaterPage() {
           {/* Success Message */}
           {isComplete && (
             <div className="p-4 bg-success border-2 border-darkgray mb-6 text-center">
-              <p className="text-pixel-sm">🎉 Daily Goal Complete! 🎉</p>
+              <p className="text-pixel-sm">Daily goal complete</p>
             </div>
           )}
 

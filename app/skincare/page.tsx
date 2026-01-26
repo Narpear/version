@@ -21,7 +21,7 @@ export default function SkincarePage() {
     { 
       id: 'pre_gym', 
       label: 'Pre Gym', 
-      icon: '💪',
+      icon: '',
       steps: [
         { id: 'cleansing_done', label: 'Cleansing' },
         { id: 'moisturizer_done', label: 'Moisturizer' },
@@ -30,7 +30,7 @@ export default function SkincarePage() {
     { 
       id: 'post_shower', 
       label: 'Post Shower', 
-      icon: '🚿',
+      icon: '',
       steps: [
         { id: 'cleansing_done', label: 'Cleansing' },
         { id: 'serum_done', label: 'Serum' },
@@ -40,7 +40,7 @@ export default function SkincarePage() {
     { 
       id: 'bedtime', 
       label: 'Bedtime', 
-      icon: '🌙',
+      icon: '',
       steps: [
         { id: 'cleansing_done', label: 'Cleansing' },
         { id: 'serum_done', label: 'Serum' },
@@ -191,7 +191,7 @@ export default function SkincarePage() {
       <p className="font-mono text-lg mb-6">Pre-gym stays the same. Post-shower + bedtime are your main routines.</p>
 
       {/* Gua Sha Reminder */}
-      <Card title="✨ Gua Sha (Once a day)" className="mb-6">
+      <Card title="Gua Sha (Once a day)" className="mb-6">
         <div className="flex items-center justify-between gap-4">
           <p className="font-mono text-lg">
             Status: <span className="font-bold">{guaShaToday ? 'Done' : 'Not done'}</span>
@@ -269,7 +269,7 @@ export default function SkincarePage() {
 
               {isComplete && (
                 <div className="mt-3 p-2 bg-success border-2 border-darkgray text-center">
-                  <p className="text-pixel-xs">Complete! ✨</p>
+                  <p className="text-pixel-xs">Complete</p>
                 </div>
               )}
             </Card>
@@ -290,7 +290,7 @@ export default function SkincarePage() {
               }).length} / {routines.length}
             </p>
             <p className="font-mono text-sm text-darkgray/70">
-              {guaShaToday ? '✨ Gua Sha done today!' : 'Remember to do gua sha once today'} 💅
+              {guaShaToday ? 'Gua Sha done today' : 'Remember to do gua sha once today'}
             </p>
           </div>
         </div>
