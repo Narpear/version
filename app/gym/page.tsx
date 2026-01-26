@@ -7,8 +7,42 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, GymLog, WorkoutTemplate } from '@/types';
-import { Dumbbell, Trash2, Save, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { Dumbbell, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
+
+// Modal Component
+function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50" 
+        onClick={onClose}
+      />
+      
+      {/* Modal Content */}
+      <div className="relative bg-white border-4 border-darkgray max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-pixel">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
+          <h2 className="heading-pixel text-xl">{title}</h2>
+          <button
+            onClick={onClose}
+            className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* Body */}
+        <div className="p-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function GymPage() {
   const router = useRouter();
@@ -17,8 +51,9 @@ export default function GymPage() {
   const [gymLogs, setGymLogs] = useState<GymLog[]>([]);
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [editingWorkout, setEditingWorkout] = useState<GymLog | null>(null);
 
   // Date state
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -33,6 +68,9 @@ export default function GymPage() {
   const [warmupDone, setWarmupDone] = useState(false);
   const [cooldownDone, setCooldownDone] = useState(false);
   const [meditationDone, setMeditationDone] = useState(false);
+
+  // Search state for templates
+  const [templateSearch, setTemplateSearch] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
   const isToday = selectedDate === today;
@@ -128,6 +166,7 @@ export default function GymPage() {
     setWeight(0);
     setCaloriesBurned(0);
     setNotes('');
+    setEditingWorkout(null);
   };
 
   const handleAddWorkout = async (e: React.FormEvent) => {
@@ -135,35 +174,62 @@ export default function GymPage() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('gym_logs')
-        .insert({
-          user_id: user.id,
-          date: selectedDate,
-          exercise_name: exerciseName,
-          sets: sets || null,
-          reps: reps || null,
-          weight_kg: weight || null,
-          calories_burned: caloriesBurned,
-          notes: notes || null,
-          warmup_done: warmupDone,
-          cooldown_done: cooldownDone,
-          meditation_done: meditationDone,
-        })
-        .select()
-        .single();
+      if (editingWorkout) {
+        // Update existing workout
+        const { data, error } = await supabase
+          .from('gym_logs')
+          .update({
+            exercise_name: exerciseName,
+            sets: sets || null,
+            reps: reps || null,
+            weight_kg: weight || null,
+            calories_burned: caloriesBurned,
+            notes: notes || null,
+          })
+          .eq('id', editingWorkout.id)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const updatedLogs = [...gymLogs, data];
-      setGymLogs(updatedLogs);
-      if (isToday) {
-        await updateDailyTotals(user.id, updatedLogs);
+        const updatedLogs = gymLogs.map(log => log.id === editingWorkout.id ? data : log);
+        setGymLogs(updatedLogs);
+        if (isToday) {
+          await updateDailyTotals(user.id, updatedLogs);
+        }
+        toast('Updated!');
+      } else {
+        // Create new workout
+        const { data, error } = await supabase
+          .from('gym_logs')
+          .insert({
+            user_id: user.id,
+            date: selectedDate,
+            exercise_name: exerciseName,
+            sets: sets || null,
+            reps: reps || null,
+            weight_kg: weight || null,
+            calories_burned: caloriesBurned,
+            notes: notes || null,
+            warmup_done: warmupDone,
+            cooldown_done: cooldownDone,
+            meditation_done: meditationDone,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const updatedLogs = [...gymLogs, data];
+        setGymLogs(updatedLogs);
+        if (isToday) {
+          await updateDailyTotals(user.id, updatedLogs);
+        }
+        toast('Saved!');
       }
       
       resetForm();
-      setShowAddForm(false);
-      toast('Saved!');
+      setShowAddModal(false);
     } catch (error) {
       console.error('Error adding workout:', error);
       alert('Failed to add workout');
@@ -194,7 +260,7 @@ export default function GymPage() {
         });
 
       await loadTemplates(user.id);
-      toast('Saved!');
+      toast('Template saved!');
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Failed to save template');
@@ -208,8 +274,19 @@ export default function GymPage() {
     setWeight(template.weight_kg || 0);
     setCaloriesBurned(template.calories_burned);
     setNotes(template.notes || '');
-    setShowTemplates(false);
-    setShowAddForm(true);
+    setShowTemplatesModal(false);
+    setShowAddModal(true);
+  };
+
+  const handleEditWorkout = (workout: GymLog) => {
+    setExerciseName(workout.exercise_name);
+    setSets(workout.sets || 0);
+    setReps(workout.reps || 0);
+    setWeight(workout.weight_kg || 0);
+    setCaloriesBurned(workout.calories_burned);
+    setNotes(workout.notes || '');
+    setEditingWorkout(workout);
+    setShowAddModal(true);
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -222,6 +299,7 @@ export default function GymPage() {
         .eq('id', id);
 
       await loadTemplates(user!.id);
+      toast('Template deleted');
     } catch (error) {
       console.error('Error deleting template:', error);
     }
@@ -241,6 +319,7 @@ export default function GymPage() {
       if (isToday) {
         await updateDailyTotals(user.id, updatedLogs);
       }
+      toast('Workout deleted');
     } catch (error) {
       console.error('Error deleting workout:', error);
       alert('Failed to delete workout');
@@ -264,6 +343,7 @@ export default function GymPage() {
       if (field === 'warmup_done') setWarmupDone(value);
       if (field === 'cooldown_done') setCooldownDone(value);
       if (field === 'meditation_done') setMeditationDone(value);
+      toast('Saved!');
     } catch (error) {
       console.error('Error updating checklist:', error);
     }
@@ -283,6 +363,17 @@ export default function GymPage() {
       setMeditationDone(firstLog.meditation_done);
     }
   }, [gymLogs]);
+
+  // Filter templates based on search
+  const filteredTemplates = templates.filter(template => {
+    const searchLower = templateSearch.toLowerCase();
+    const nameLower = template.template_name.toLowerCase();
+    const exerciseLower = template.exercise_name.toLowerCase();
+    
+    return nameLower.includes(searchLower) || 
+           exerciseLower.includes(searchLower) ||
+           template.calories_burned.toString().includes(searchLower);
+  });
 
   if (loading) {
     return (
@@ -328,12 +419,8 @@ export default function GymPage() {
 
       {/* Action Buttons */}
       <div className="flex gap-4 mb-6">
-        <Button onClick={() => { setShowAddForm(!showAddForm); setShowTemplates(false); }}>
-          {showAddForm ? 'Cancel' : '+ Add Exercise'}
-        </Button>
-        <Button onClick={() => { setShowTemplates(!showTemplates); setShowAddForm(false); }} variant="secondary">
-          <Star size={16} className="inline mr-2" />
-          Templates ({templates.length})
+        <Button onClick={() => setShowAddModal(true)}>
+          + Add Exercise
         </Button>
       </div>
 
@@ -343,15 +430,21 @@ export default function GymPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => updateChecklist('warmup_done', !warmupDone)}
-              className={`p-4 border-2 border-darkgray transition-all ${
-                warmupDone ? 'bg-success' : 'bg-white hover:bg-lavender'
+              className={`p-4 border-2 transition-all ${
+                warmupDone ? 'bg-success border-success' : 'bg-white border-darkgray hover:bg-lavender'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
-                  warmupDone ? 'bg-darkgray' : 'bg-white'
-                }`}>
-                  {warmupDone && <span className="text-white text-lg">✓</span>}
+                <div 
+                  className="w-7 h-7 border-[3px] flex items-center justify-center transition-all"
+                  style={{
+                    backgroundColor: warmupDone ? '#2d2d2d' : '#ffffff',
+                    borderColor: warmupDone ? '#2d2d2d' : '#4A4A4A'
+                  }}
+                >
+                  {warmupDone ? (
+                    <span className="text-white text-2xl font-black leading-none">✓</span>
+                  ) : null}
                 </div>
                 <span className="font-mono text-lg">5 min Warmup</span>
               </div>
@@ -359,15 +452,21 @@ export default function GymPage() {
 
             <button
               onClick={() => updateChecklist('cooldown_done', !cooldownDone)}
-              className={`p-4 border-2 border-darkgray transition-all ${
-                cooldownDone ? 'bg-success' : 'bg-white hover:bg-lavender'
+              className={`p-4 border-2 transition-all ${
+                cooldownDone ? 'bg-success border-success' : 'bg-white border-darkgray hover:bg-lavender'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
-                  cooldownDone ? 'bg-darkgray' : 'bg-white'
-                }`}>
-                  {cooldownDone && <span className="text-white text-lg">✓</span>}
+                <div 
+                  className="w-7 h-7 border-[3px] flex items-center justify-center transition-all"
+                  style={{
+                    backgroundColor: cooldownDone ? '#2d2d2d' : '#ffffff',
+                    borderColor: cooldownDone ? '#2d2d2d' : '#4A4A4A'
+                  }}
+                >
+                  {cooldownDone ? (
+                    <span className="text-white text-2xl font-black leading-none">✓</span>
+                  ) : null}
                 </div>
                 <span className="font-mono text-lg">5 min Cooldown</span>
               </div>
@@ -375,128 +474,26 @@ export default function GymPage() {
 
             <button
               onClick={() => updateChecklist('meditation_done', !meditationDone)}
-              className={`p-4 border-2 border-darkgray transition-all ${
-                meditationDone ? 'bg-success' : 'bg-white hover:bg-lavender'
+              className={`p-4 border-2 transition-all ${
+                meditationDone ? 'bg-success border-success' : 'bg-white border-darkgray hover:bg-lavender'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
-                  meditationDone ? 'bg-darkgray' : 'bg-white'
-                }`}>
-                  {meditationDone && <span className="text-white text-lg">✓</span>}
+                <div 
+                  className="w-7 h-7 border-[3px] flex items-center justify-center transition-all"
+                  style={{
+                    backgroundColor: meditationDone ? '#2d2d2d' : '#ffffff',
+                    borderColor: meditationDone ? '#2d2d2d' : '#4A4A4A'
+                  }}
+                >
+                  {meditationDone ? (
+                    <span className="text-white text-2xl font-black leading-none">✓</span>
+                  ) : null}
                 </div>
                 <span className="font-mono text-lg">5 min Meditation</span>
               </div>
             </button>
           </div>
-        </Card>
-      )}
-
-      {/* Templates List */}
-      {showTemplates && (
-        <Card title="Your Workout Templates" className="mb-6">
-          {templates.length === 0 ? (
-            <p className="font-mono text-sm text-darkgray/70">No templates saved yet. Add an exercise and click "Save as Template"</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="p-3 border-2 border-darkgray bg-secondary/20 flex justify-between items-center"
-                >
-                  <div className="flex-1 cursor-pointer" onClick={() => handleUseTemplate(template)}>
-                    <p className="font-mono text-sm font-bold">{template.template_name}</p>
-                    <p className="text-pixel-xs text-darkgray/70">
-                      {template.exercise_name} • {template.calories_burned} cal
-                      {template.sets && template.reps && ` • ${template.sets}×${template.reps}`}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteTemplate(template.id)}
-                    className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Add Exercise Form */}
-      {showAddForm && (
-        <Card title="Add Exercise" className="mb-6">
-          <form onSubmit={handleAddWorkout}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                type="text"
-                label="Exercise Name"
-                value={exerciseName}
-                onChange={(e) => setExerciseName(e.target.value)}
-                placeholder="e.g., Squats"
-                required
-              />
-
-              <Input
-                type="number"
-                label="Calories Burned"
-                value={caloriesBurned}
-                onChange={(e) => setCaloriesBurned(parseFloat(e.target.value))}
-                placeholder="150"
-                required
-                min={0}
-              />
-
-              <Input
-                type="number"
-                label="Sets"
-                value={sets}
-                onChange={(e) => setSets(parseFloat(e.target.value))}
-                placeholder="3"
-                min={0}
-              />
-
-              <Input
-                type="number"
-                label="Reps"
-                value={reps}
-                onChange={(e) => setReps(parseFloat(e.target.value))}
-                placeholder="12"
-                min={0}
-              />
-
-              <Input
-                type="number"
-                label="Weight (kg)"
-                value={weight}
-                onChange={(e) => setWeight(parseFloat(e.target.value))}
-                placeholder="20"
-                step={0.5}
-                min={0}
-              />
-
-              <div className="md:col-span-2">
-                <Input
-                  type="text"
-                  label="Notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional notes..."
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 mt-6">
-              <Button type="submit" className="flex-1">
-                Add Exercise
-              </Button>
-              <Button type="button" onClick={handleSaveAsTemplate} variant="secondary">
-                <Save size={16} className="inline mr-2" />
-                Save as Template
-              </Button>
-            </div>
-          </form>
         </Card>
       )}
 
@@ -524,7 +521,7 @@ export default function GymPage() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="font-mono text-lg font-bold mb-2">{log.exercise_name}</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
                       {log.sets && log.reps && (
                         <p>{log.sets} × {log.reps}</p>
                       )}
@@ -539,12 +536,20 @@ export default function GymPage() {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDeleteWorkout(log.id)}
-                    className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditWorkout(log)}
+                      className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70 transition-all"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteWorkout(log.id)}
+                      className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -552,7 +557,7 @@ export default function GymPage() {
         </Card>
       )}
 
-      {gymLogs.length === 0 && !showAddForm && !showTemplates && (
+      {gymLogs.length === 0 && (
         <Card>
           <div className="text-center py-8">
             <Dumbbell size={48} className="mx-auto mb-4 text-darkgray/30" />
@@ -561,6 +566,149 @@ export default function GymPage() {
           </div>
         </Card>
       )}
+
+      {/* Add Exercise Modal */}
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); resetForm(); }} title={editingWorkout ? "Edit Exercise" : "Add Exercise"}>
+        {/* Button to open templates */}
+        {templates.length > 0 && !editingWorkout && (
+          <div className="mb-6">
+            <Button 
+              onClick={() => { setShowTemplatesModal(true); }} 
+              variant="secondary"
+              className="w-full"
+            >
+              <Star size={16} className="inline mr-2" />
+              Browse Templates ({templates.length})
+            </Button>
+          </div>
+        )}
+
+        <form onSubmit={handleAddWorkout}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              type="text"
+              label="Exercise Name"
+              value={exerciseName}
+              onChange={(e) => setExerciseName(e.target.value)}
+              placeholder="e.g., Squats"
+              required
+            />
+
+            <Input
+              type="number"
+              label="Calories Burned"
+              value={caloriesBurned}
+              onChange={(e) => setCaloriesBurned(parseFloat(e.target.value))}
+              placeholder="150"
+              required
+              min={0}
+            />
+
+            <Input
+              type="number"
+              label="Sets"
+              value={sets}
+              onChange={(e) => setSets(parseFloat(e.target.value))}
+              placeholder="3"
+              min={0}
+            />
+
+            <Input
+              type="number"
+              label="Reps"
+              value={reps}
+              onChange={(e) => setReps(parseFloat(e.target.value))}
+              placeholder="12"
+              min={0}
+            />
+
+            <Input
+              type="number"
+              label="Weight (kg)"
+              value={weight}
+              onChange={(e) => setWeight(parseFloat(e.target.value))}
+              placeholder="20"
+              step={0.5}
+              min={0}
+            />
+
+            <div className="md:col-span-2">
+              <Input
+                type="text"
+                label="Notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional notes..."
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 mt-6">
+            <Button type="submit" className="flex-1">
+              {editingWorkout ? 'Update Exercise' : 'Add Exercise'}
+            </Button>
+            {!editingWorkout && (
+              <Button type="button" onClick={handleSaveAsTemplate} variant="secondary">
+                <Save size={16} className="inline mr-2" />
+                Save as Template
+              </Button>
+            )}
+          </div>
+        </form>
+      </Modal>
+
+      {/* Templates Modal */}
+      <Modal isOpen={showTemplatesModal} onClose={() => { setShowTemplatesModal(false); setTemplateSearch(''); }} title="Workout Templates">
+        {/* Search Bar */}
+        <div className="mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              value={templateSearch}
+              onChange={(e) => setTemplateSearch(e.target.value)}
+              placeholder="Search templates..."
+              className="input-pixel w-full pr-10"
+            />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-darkgray/50 pointer-events-none" size={20} />
+          </div>
+        </div>
+
+        {filteredTemplates.length === 0 ? (
+          <p className="font-mono text-sm text-darkgray/70 text-center py-4">
+            {templateSearch ? 'No templates found matching your search' : 'No templates saved yet. Add an exercise and click "Save as Template"'}
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            {filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className="p-4 border-2 border-darkgray bg-secondary/20 hover:bg-secondary/30 transition-all"
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <div 
+                    className="flex-1 cursor-pointer" 
+                    onClick={() => handleUseTemplate(template)}
+                  >
+                    <p className="font-mono text-base font-bold mb-1">{template.template_name}</p>
+                    <p className="text-pixel-xs text-darkgray/70 mb-1">{template.exercise_name}</p>
+                    <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                      <p>{template.calories_burned} cal</p>
+                      {template.sets && template.reps && <p>{template.sets}×{template.reps}</p>}
+                      {template.weight_kg && <p>{template.weight_kg}kg</p>}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

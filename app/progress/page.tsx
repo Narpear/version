@@ -17,8 +17,7 @@ import {
   getDeficitColor,
   getProgressColor,
 } from '@/lib/calculations';
-import { RefreshCw, TrendingDown } from 'lucide-react';
-import { Info } from 'lucide-react';
+import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ProgressPage() {
@@ -243,18 +242,38 @@ export default function ProgressPage() {
     return 'Obese';
   };
 
+  const tips = [
+    {
+      icon: Target,
+      title: 'Stay Consistent',
+      tip: 'Track your weight, food, and workouts daily for best results. Small daily actions lead to big changes.',
+      color: '#B5DEFF'
+    },
+    {
+      icon: Scale,
+      title: 'Weigh Smart',
+      tip: 'Weigh yourself at the same time each day (morning is best) for accurate tracking.',
+      color: '#FFB5E8'
+    },
+    {
+      icon: Zap,
+      title: 'Calorie Accuracy',
+      tip: 'Be honest with portion sizes. Underestimating food intake is the most common tracking mistake.',
+      color: '#FFFFB5'
+    },
+    {
+      icon: Calendar,
+      title: 'Be Patient',
+      tip: 'Healthy weight change is 0.5-1kg per week. Faster isn\'t always better for long-term success.',
+      color: '#C1FBA4'
+    },
+  ];
+
   return (
     <div className="container-pixel">
       <h1 className="heading-pixel">{getPageTitle()}</h1>
       <p className="font-mono text-lg mb-2">Track your daily {getBalanceLabel().toLowerCase()} and progress</p>
       <p className="text-pixel-xs text-darkgray/60 mb-6">Autosaved to your account.</p>
-
-      {/* Weight Chart */}
-      {weightHistory.length > 0 && (
-        <Card title="Weight Progress (Last 30 Days)" className="mb-6">
-          <WeightChart data={weightHistory} goal={activeGoal} />
-        </Card>
-      )}
 
       {/* Weight Input & Calculate Button */}
       <Card title="Today's Weight & Calculation" className="mb-6">
@@ -422,6 +441,42 @@ export default function ProgressPage() {
         </Card>
       )}
 
+      {/* Weight Chart */}
+      {weightHistory.length > 0 && (
+        <Card title="Weight Progress (Last 30 Days)" className="mb-6">
+          <WeightChart data={weightHistory} goal={activeGoal} />
+        </Card>
+      )}
+
+      {/* Tips Section */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Lightbulb size={24} className="text-primary" />
+          <h2 className="text-pixel-lg">Progress Tips</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {tips.map((tip, i) => {
+            const IconComponent = tip.icon;
+            return (
+              <Card key={i} className="hover:shadow-lg transition-all">
+                <div className="flex gap-3">
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 border-darkgray flex-shrink-0"
+                    style={{ backgroundColor: tip.color }}
+                  >
+                    <IconComponent size={24} className="text-darkgray" />
+                  </div>
+                  <div>
+                    <h3 className="font-mono font-bold text-base mb-1">{tip.title}</h3>
+                    <p className="text-pixel-xs text-darkgray/80 leading-relaxed">{tip.tip}</p>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
       {!dailyEntry?.caloric_deficit && (
         <Card>
           <div className="text-center py-8">
@@ -442,4 +497,3 @@ export default function ProgressPage() {
     </div>
   );
 }
-
