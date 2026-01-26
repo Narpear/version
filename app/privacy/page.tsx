@@ -50,15 +50,14 @@ export default function PrivacyPage() {
             <p className="mb-2">
               Row Level Security (RLS) is enabled on all database tables, which means every database query automatically filters data to show you only your own records. Even if there were a bug in the application code, the database layer provides an additional security boundary.
             </p>
-            <p className="text-darkgray/80">
-              Authentication is handled securely through Supabase Auth, which manages password hashing, session tokens, and secure login flows so you don't have to worry about the technical details.
-            </p>
           </div>
 
           <div>
             <p className="font-bold mb-2">Developer data access</p>
             <p className="mb-2">
-              I want to be clear: I do not look at your personal data. Your logs, goals, and daily entries are private, and I respect that boundary completely. The app is designed to work without any need for me to access individual user information.
+              As the sole developer and operator of this app, I have the technical ability to access the database. 
+              However,
+              <b>I want to be clear: I do not look at your personal data. Your logs, goals, and daily entries are private, and I respect that boundary completely. The app is designed to work without any need for me to access individual user information.</b>
             </p>
           </div>
 
