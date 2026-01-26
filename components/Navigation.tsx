@@ -42,7 +42,7 @@ export default function Navigation() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-[72px] border-2 transition-all ${
+                  className={`flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 transition-all ${
                     isActive
                       ? 'bg-secondary border-darkgray shadow-pixel'
                       : 'bg-white border-darkgray hover:bg-lavender hover:shadow-pixel'
