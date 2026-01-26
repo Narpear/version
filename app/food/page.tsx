@@ -8,9 +8,11 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, FoodLog, FoodTemplate } from '@/types';
 import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function FoodPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [templates, setTemplates] = useState<FoodTemplate[]>([]);
@@ -158,6 +160,7 @@ export default function FoodPage() {
       
       resetForm();
       setShowAddForm(false);
+      toast('Saved!');
     } catch (error) {
       console.error('Error adding food:', error);
       alert('Failed to add food');
@@ -185,7 +188,7 @@ export default function FoodPage() {
         });
 
       await loadTemplates(user.id);
-      alert('Template saved! ⭐');
+      toast('Saved!');
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Failed to save template');
@@ -274,7 +277,7 @@ export default function FoodPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="heading-pixel">Food Tracker</h1>
         <div className="flex items-center gap-4">
-          <button onClick={() => changeDate(-1)} className="p-2 border-4 border-darkgray bg-white hover:bg-lavender">
+          <button onClick={() => changeDate(-1)} className="p-2 border-2 border-darkgray bg-white hover:bg-lavender">
             <ChevronLeft size={24} />
           </button>
           <div className="text-center">
@@ -292,7 +295,7 @@ export default function FoodPage() {
           <button 
             onClick={() => changeDate(1)} 
             disabled={isToday}
-            className={`p-2 border-4 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
+            className={`p-2 border-2 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
           >
             <ChevronRight size={24} />
           </button>
@@ -320,7 +323,7 @@ export default function FoodPage() {
               {templates.map((template) => (
                 <div
                   key={template.id}
-                  className="p-3 border-4 border-darkgray bg-accent/20 flex justify-between items-center"
+                  className="p-3 border-2 border-darkgray bg-accent/20 flex justify-between items-center"
                 >
                   <div className="flex-1 cursor-pointer" onClick={() => handleUseTemplate(template)}>
                     <p className="font-mono text-sm font-bold">{template.template_name}</p>
@@ -419,7 +422,7 @@ export default function FoodPage() {
                   type="checkbox"
                   checked={isHealthy}
                   onChange={(e) => setIsHealthy(e.target.checked)}
-                  className="w-6 h-6 border-4 border-darkgray"
+                  className="w-6 h-6 border-2 border-darkgray"
                 />
                 <span className="font-mono text-lg">Mark as healthy meal</span>
               </label>
@@ -470,7 +473,7 @@ export default function FoodPage() {
               {meals.map((meal) => (
                 <div
                   key={meal.id}
-                  className={`p-4 border-4 border-darkgray ${
+                  className={`p-4 border-2 border-darkgray ${
                     meal.is_healthy ? 'bg-success/20' : 'bg-warning/20'
                   }`}
                 >

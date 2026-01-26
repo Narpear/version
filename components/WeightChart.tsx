@@ -1,6 +1,6 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Goal } from '@/types';
 
 interface WeightDataPoint {
@@ -29,8 +29,14 @@ export default function WeightChart({ data, goal }: WeightChartProps) {
   return (
     <div className="w-full h-64 md:h-80">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#4A4A4A" opacity={0.2} />
+        <AreaChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+          <defs>
+            <linearGradient id="weightFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#FFB5E8" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="#FFB5E8" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#4A4A4A" opacity={0.15} />
           <XAxis 
             dataKey="displayDate" 
             stroke="#4A4A4A"
@@ -45,7 +51,7 @@ export default function WeightChart({ data, goal }: WeightChartProps) {
           <Tooltip 
             contentStyle={{ 
               backgroundColor: '#FFF9F0', 
-              border: '4px solid #4A4A4A',
+              border: '2px solid #4A4A4A',
               fontFamily: 'VT323, monospace',
               fontSize: '16px'
             }}
@@ -56,7 +62,7 @@ export default function WeightChart({ data, goal }: WeightChartProps) {
             <ReferenceLine 
               y={goal.goal_weight_kg} 
               stroke="#C1FBA4" 
-              strokeWidth={3}
+              strokeWidth={2}
               strokeDasharray="5 5"
               label={{ 
                 value: `Goal: ${goal.goal_weight_kg} kg`, 
@@ -65,15 +71,16 @@ export default function WeightChart({ data, goal }: WeightChartProps) {
               }}
             />
           )}
-          <Line 
-            type="monotone" 
-            dataKey="weight" 
-            stroke="#FFB5E8" 
-            strokeWidth={3}
-            dot={{ fill: '#FFB5E8', strokeWidth: 2, r: 5, stroke: '#4A4A4A' }}
-            activeDot={{ r: 8 }}
+          <Area
+            type="monotone"
+            dataKey="weight"
+            stroke="#FFB5E8"
+            strokeWidth={2}
+            fill="url(#weightFill)"
+            dot={{ fill: '#FFB5E8', strokeWidth: 2, r: 4, stroke: '#4A4A4A' }}
+            activeDot={{ r: 7 }}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

@@ -120,11 +120,10 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
   let daysHitGoal = 0;
   let avgCalorieBalance = 0;
   let goalLabel = 'On Track Days';
-  let goalThreshold = 0;
+  let goalThreshold = activeGoal?.daily_target_kcal || 0;
 
   if (goalType === 'loss') {
-    // For weight loss: want deficit >= 300
-    goalThreshold = 300;
+    // For weight loss: want deficit >= daily_target_kcal (e.g., >= -300)
     daysHitGoal = weekData.filter(d => 
       d.caloric_deficit !== null && d.caloric_deficit >= goalThreshold
     ).length;
@@ -132,8 +131,7 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
     const totalDeficit = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
     avgCalorieBalance = Math.round(totalDeficit / Math.max(daysLogged, 1));
   } else if (goalType === 'gain') {
-    // For weight gain: want surplus (negative deficit) >= 300
-    goalThreshold = -300;
+    // For weight gain: want surplus (negative deficit) <= daily_target_kcal (e.g., <= +300)
     daysHitGoal = weekData.filter(d => 
       d.caloric_deficit !== null && d.caloric_deficit <= goalThreshold
     ).length;
@@ -141,10 +139,10 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
     const totalSurplus = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
     avgCalorieBalance = Math.round(totalSurplus / Math.max(daysLogged, 1));
   } else if (goalType === 'maintenance') {
-    // For maintenance: want deficit between -200 and 200
+    // For maintenance: want balance within ±200 kcal
+    const maintenanceWindow = 200;
     daysHitGoal = weekData.filter(d => 
-      d.caloric_deficit !== null && 
-      Math.abs(d.caloric_deficit) <= 200
+      d.caloric_deficit !== null && Math.abs(d.caloric_deficit) <= maintenanceWindow
     ).length;
     goalLabel = 'Stayed Balanced';
     const totalBalance = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
@@ -180,16 +178,12 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
   // Dynamic messaging
   const getBalanceLabel = () => {
     if (!goalType) return `Avg Balance: ${avgCalorieBalance} cal`;
-    if (goalType === 'loss') return `Avg Deficit: ${avgCalorieBalance} cal`;
-    if (goalType === 'gain') return `Avg Surplus: ${Math.abs(avgCalorieBalance)} cal`;
-    return `Avg Balance: ${Math.abs(avgCalorieBalance)} cal`;
+    return `Avg Deficit: ${avgCalorieBalance} cal`;
   };
 
   const getGoalDescription = () => {
     if (!goalType) return 'Set a goal in Profile';
-    if (goalType === 'loss') return '300+ cal deficit';
-    if (goalType === 'gain') return '300+ cal surplus';
-    return 'within ±200 cal';
+    return '300+ cal deficit';
   };
 
   return (

@@ -7,9 +7,11 @@ import Button from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
 import { Droplet } from 'lucide-react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function WaterPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [glasses, setGlasses] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -82,6 +84,7 @@ export default function WaterPage() {
       }
 
       setGlasses(newGlasses);
+      toast('Saved!');
     } catch (error) {
       console.error('Error updating water:', error);
       alert('Failed to update water intake');
@@ -125,7 +128,7 @@ export default function WaterPage() {
             {[...Array(maxGlasses)].map((_, i) => (
               <div
                 key={i}
-                className={`aspect-square border-4 border-darkgray flex items-center justify-center transition-all ${
+                className={`aspect-square border-2 border-darkgray flex items-center justify-center transition-all ${
                   i < glasses 
                     ? 'bg-secondary' 
                     : 'bg-white'
@@ -151,7 +154,7 @@ export default function WaterPage() {
             </div>
             <div className="progress-pixel">
               <div 
-                className="h-full border-r-4 border-darkgray transition-all"
+                className="h-full border-r-2 border-darkgray transition-all"
                 style={{ 
                   width: `${percentage}%`,
                   backgroundColor: isComplete ? '#C1FBA4' : '#B5DEFF'
@@ -162,7 +165,7 @@ export default function WaterPage() {
 
           {/* Success Message */}
           {isComplete && (
-            <div className="p-4 bg-success border-4 border-darkgray mb-6 text-center">
+            <div className="p-4 bg-success border-2 border-darkgray mb-6 text-center">
               <p className="text-pixel-sm">🎉 Daily Goal Complete! 🎉</p>
             </div>
           )}

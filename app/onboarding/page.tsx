@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
+import { calculateGoalEnergyNeeded, calculateDailyTargetKcal } from '@/lib/calculations';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -68,9 +69,26 @@ export default function OnboardingPage() {
 
     try {
       if (wantsGoal && startWeight > 0 && goalWeight > 0) {
-        // Calculate goal deficit
-        const weightDiff = Math.abs(startWeight - goalWeight);
-        const goalDeficitTotal = Math.round(weightDiff * 7700);
+        // Validate weights based on goal type
+        if (goalType === 'loss' && goalWeight >= startWeight) {
+          alert('For weight loss, goal weight must be less than current weight');
+          setLoading(false);
+          return;
+        }
+        if (goalType === 'gain' && goalWeight <= startWeight) {
+          alert('For weight gain, goal weight must be greater than current weight');
+          setLoading(false);
+          return;
+        }
+        if (goalType === 'maintenance' && Math.abs(startWeight - goalWeight) > 2) {
+          alert('For maintenance, goal weight should be close to current weight (±2kg)');
+          setLoading(false);
+          return;
+        }
+
+        // Calculate goal energy needed and daily target
+        const totalEnergyNeeded = calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
+        const dailyTarget = calculateDailyTargetKcal(goalType);
 
         // Create goal
         await supabase
@@ -81,7 +99,8 @@ export default function OnboardingPage() {
             start_date: new Date().toISOString().split('T')[0],
             start_weight_kg: startWeight,
             goal_weight_kg: goalWeight,
-            goal_deficit_total: goalDeficitTotal,
+            daily_target_kcal: dailyTarget,
+            total_energy_kcal_needed: totalEnergyNeeded,
             current_weight_kg: startWeight,
             is_active: true,
           });
@@ -179,7 +198,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => setWantsGoal(false)}
-                className={`w-full p-4 border-4 border-darkgray text-left transition-all ${
+                className={`w-full p-4 border-2 border-darkgray text-left transition-all ${
                   wantsGoal === false ? 'bg-primary' : 'bg-white hover:bg-lavender'
                 }`}
               >
@@ -190,7 +209,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => setWantsGoal(true)}
-                className={`w-full p-4 border-4 border-darkgray text-left transition-all ${
+                className={`w-full p-4 border-2 border-darkgray text-left transition-all ${
                   wantsGoal === true ? 'bg-primary' : 'bg-white hover:bg-lavender'
                 }`}
               >
@@ -205,7 +224,7 @@ export default function OnboardingPage() {
                   <label className="block text-pixel-sm mb-2">Goal Type</label>
                   <select
                     value={goalType}
-                    onChange={(e) => setGoalType(e.target.value as any)}
+                    onChange={(e) => setGoalType(e.target.value as 'loss' | 'gain' | 'maintenance')}
                     className="input-pixel w-full"
                   >
                     <option value="loss">Weight Loss</option>
@@ -230,7 +249,7 @@ export default function OnboardingPage() {
                   label="Goal Weight (kg)"
                   value={goalWeight}
                   onChange={(e) => setGoalWeight(parseFloat(e.target.value))}
-                  placeholder="55"
+                  placeholder={goalType === 'loss' ? '55' : goalType === 'gain' ? '65' : '60'}
                   step={0.1}
                   min={20}
                   required={wantsGoal}
@@ -241,6 +260,9 @@ export default function OnboardingPage() {
                     <p className="text-pixel-sm">
                       Goal: {goalType === 'loss' ? 'Lose' : goalType === 'gain' ? 'Gain' : 'Maintain'}{' '}
                       {Math.abs(startWeight - goalWeight).toFixed(1)} kg
+                    </p>
+                    <p className="text-pixel-xs text-darkgray/70 mt-1">
+                      Daily target: {goalType === 'loss' ? '-300' : goalType === 'gain' ? '+300' : '0'} kcal
                     </p>
                   </div>
                 )}
@@ -253,7 +275,16 @@ export default function OnboardingPage() {
               </Button>
               <Button 
                 type="submit" 
-                disabled={loading || (wantsGoal === true && (startWeight <= 0 || goalWeight <= 0))} 
+                disabled={
+                  loading || 
+                  (wantsGoal === true && (
+                    startWeight <= 0 || 
+                    goalWeight <= 0 ||
+                    (goalType === 'loss' && goalWeight >= startWeight) ||
+                    (goalType === 'gain' && goalWeight <= startWeight) ||
+                    (goalType === 'maintenance' && Math.abs(startWeight - goalWeight) > 2)
+                  ))
+                } 
                 className="flex-1"
               >
                 {loading ? 'Saving...' : wantsGoal ? 'Finish' : 'Skip & Start'}

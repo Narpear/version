@@ -15,7 +15,8 @@ export interface Goal {
   start_weight_kg: number;
   current_weight_kg: number | null;
   goal_weight_kg: number;
-  goal_deficit_total: number | null;
+  daily_target_kcal: number;  // -300 for loss, +300 for gain, 0 for maintenance
+  total_energy_kcal_needed: number | null;  // NULL for maintenance
   is_active: boolean;
 }
 

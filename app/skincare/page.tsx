@@ -6,9 +6,11 @@ import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { User, SkincareLog } from '@/types';
 import { Sparkles } from 'lucide-react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function SkincarePage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [logs, setLogs] = useState<SkincareLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,6 @@ export default function SkincarePage() {
         { id: 'cleansing_done', label: 'Cleansing' },
         { id: 'serum_done', label: 'Serum' },
         { id: 'moisturizer_done', label: 'Moisturizer' },
-        { id: 'gua_sha_done', label: 'Gua Sha' },
       ]
     },
     { 
@@ -101,6 +102,7 @@ export default function SkincarePage() {
           .eq('id', existingLog.id);
 
         setLogs(logs.map(log => log.id === existingLog.id ? updated : log));
+        toast('Saved!');
       } else {
         // Create new log
         const newLog = {
@@ -121,6 +123,7 @@ export default function SkincarePage() {
 
         if (data) {
           setLogs([...logs, data]);
+          toast('Saved!');
         }
       }
     } catch (error) {
@@ -129,8 +132,50 @@ export default function SkincarePage() {
     }
   };
 
-  // Check if gua sha has been done today
+  // Gua sha is once per day (any routine log can store it)
   const guaShaToday = logs.some(log => log.gua_sha_done);
+
+  const toggleGuaSha = async () => {
+    if (!user) return;
+
+    try {
+      // If already done, turn it off wherever it is
+      const existing = logs.find(l => l.gua_sha_done);
+      if (existing) {
+        const updated = { ...existing, gua_sha_done: false };
+        await supabase.from('skincare_logs').update({ gua_sha_done: false }).eq('id', existing.id);
+        setLogs(logs.map(l => (l.id === existing.id ? updated : l)));
+        toast('Saved!');
+        return;
+      }
+
+      // Otherwise, store it on bedtime log if possible (or create bedtime log)
+      const bedtimeLog = getRoutineLog('bedtime');
+      if (bedtimeLog) {
+        const updated = { ...bedtimeLog, gua_sha_done: true };
+        await supabase.from('skincare_logs').update({ gua_sha_done: true }).eq('id', bedtimeLog.id);
+        setLogs(logs.map(l => (l.id === bedtimeLog.id ? updated : l)));
+        toast('Saved!');
+      } else {
+        const newLog = {
+          user_id: user.id,
+          date: today,
+          time_of_day: 'bedtime',
+          cleansing_done: false,
+          serum_done: false,
+          moisturizer_done: false,
+          gua_sha_done: true,
+        };
+
+        const { data } = await supabase.from('skincare_logs').insert(newLog).select().single();
+        if (data) setLogs([...logs, data]);
+        toast('Saved!');
+      }
+    } catch (error) {
+      console.error('Error updating gua sha:', error);
+      alert('Failed to update gua sha');
+    }
+  };
 
   if (loading) {
     return (
@@ -143,14 +188,25 @@ export default function SkincarePage() {
   return (
     <div className="container-pixel">
       <h1 className="heading-pixel">Skincare Tracker</h1>
-      <p className="font-mono text-lg mb-6">Track your daily skincare routines</p>
+      <p className="font-mono text-lg mb-6">Pre-gym stays the same. Post-shower + bedtime are your main routines.</p>
 
       {/* Gua Sha Reminder */}
-      {guaShaToday && (
-        <div className="mb-6 p-4 bg-success border-4 border-darkgray">
-          <p className="text-pixel-sm text-center">✨ Gua Sha completed today! ✨</p>
+      <Card title="✨ Gua Sha (Once a day)" className="mb-6">
+        <div className="flex items-center justify-between gap-4">
+          <p className="font-mono text-lg">
+            Status: <span className="font-bold">{guaShaToday ? 'Done' : 'Not done'}</span>
+          </p>
+          <button
+            onClick={toggleGuaSha}
+            className={`px-4 py-3 border-2 border-darkgray font-mono text-lg transition-all ${
+              guaShaToday ? 'bg-success' : 'bg-white hover:bg-lavender'
+            }`}
+          >
+            {guaShaToday ? 'Undo' : 'Mark done'}
+          </button>
         </div>
-      )}
+        <p className="font-mono text-sm text-darkgray/70 mt-2">Tip: do it once anytime (morning or night) — your choice.</p>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {routines.map((routine) => {
@@ -166,25 +222,19 @@ export default function SkincarePage() {
               <div className="space-y-3">
                 {relevantSteps.map((step) => {
                   const isChecked = log?.[step.id as keyof SkincareLog] === true;
-                  
-                  // Disable gua sha if already done today (and this is not the log where it was done)
-                  const isGuaShaDisabled = step.id === 'gua_sha_done' && guaShaToday && !isChecked;
 
                   return (
                     <button
                       key={step.id}
                       onClick={() => toggleStep(routine.id, step.id)}
-                      disabled={isGuaShaDisabled}
-                      className={`w-full p-3 border-4 border-darkgray text-left transition-all ${
+                      className={`w-full p-3 border-2 border-darkgray text-left transition-all ${
                         isChecked 
                           ? 'bg-success' 
-                          : isGuaShaDisabled
-                          ? 'bg-gray-200 cursor-not-allowed opacity-50'
                           : 'bg-white hover:bg-lavender'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-6 h-6 border-4 border-darkgray flex items-center justify-center ${
+                        <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
                           isChecked ? 'bg-darkgray' : 'bg-white'
                         }`}>
                           {isChecked && (
@@ -193,7 +243,6 @@ export default function SkincarePage() {
                         </div>
                         <span className="font-mono text-lg">
                           {step.label}
-                          {step.id === 'gua_sha_done' && ' (1x/day)'}
                         </span>
                       </div>
                     </button>
@@ -212,7 +261,7 @@ export default function SkincarePage() {
                     style={{ 
                       width: `${(completedSteps / relevantSteps.length) * 100}%`,
                       backgroundColor: isComplete ? '#C1FBA4' : '#FFB5E8',
-                      borderRight: completedSteps > 0 ? '4px solid #4A4A4A' : 'none'
+                      borderRight: completedSteps > 0 ? '2px solid #4A4A4A' : 'none'
                     }}
                   />
                 </div>

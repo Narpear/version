@@ -7,8 +7,8 @@ import Button from '@/components/ui/Button';
 import WeeklySummary from '@/components/WeeklySummary';
 import { supabase } from '@/lib/supabase';
 import { User, DailyEntry, Goal } from '@/types';
-import { calculateActualDeficit, calculateProgress, getProgressColor, getDeficitColor } from '@/lib/calculations';
-import { Utensils, Dumbbell, Droplet, TrendingDown, Target } from 'lucide-react';
+import { calculateEnergyChange, calculateProgress, getProgressColor, getDeficitColor } from '@/lib/calculations';
+import { Utensils, Dumbbell, Droplet, TrendingDown, Target, Flame } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -151,19 +151,56 @@ export default function HomePage() {
   const caloriesIn = todayEntry?.total_calories_in || 0;
   const caloriesOut = todayEntry?.total_calories_out || 0;
   const waterGlasses = todayEntry?.water_glasses || 0;
-  const deficit = todayEntry?.caloric_deficit || null;
+  const balance = todayEntry?.caloric_deficit || null;
   const weight = todayEntry?.weight_kg || null;
 
-  const deficitColor = deficit !== null ? getDeficitColor(deficit) : '#FFFFFF';
+  const balanceColor = balance !== null ? getDeficitColor(balance, activeGoal?.goal_type) : '#FFFFFF';
 
   // Overall progress
-  const actualDeficit = activeGoal && weight
-    ? calculateActualDeficit(activeGoal.start_weight_kg, weight)
+  const energyChange = activeGoal && weight
+    ? calculateEnergyChange(activeGoal.start_weight_kg, weight)
     : 0;
   
-  const progress = activeGoal && activeGoal.goal_deficit_total
-    ? calculateProgress(actualDeficit, activeGoal.goal_deficit_total)
+  const progress = activeGoal && activeGoal.total_energy_kcal_needed
+    ? calculateProgress(energyChange, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
     : 0;
+
+  // Get goal-aware labels
+  const getBalanceLabel = () => {
+    if (activeGoal?.goal_type === 'loss') return 'Deficit';
+    if (activeGoal?.goal_type === 'gain') return 'Surplus';
+    if (activeGoal?.goal_type === 'maintenance') return 'Balance';
+    return 'Deficit';
+  };
+
+  const getBalanceMessage = () => {
+    if (!balance) return null;
+    if (activeGoal?.goal_type === 'loss') {
+      if (balance >= 500) return '🔥 Excellent!';
+      if (balance >= 300) return '✅ Great!';
+      if (balance >= 100) return '👍 Good';
+      if (balance >= 0) return '⚠️ Low';
+      return '❌ Surplus';
+    }
+    if (activeGoal?.goal_type === 'gain') {
+      if (balance <= -500) return '🔥 Excellent!';
+      if (balance <= -300) return '✅ Great!';
+      if (balance <= -100) return '👍 Good';
+      if (balance <= 0) return '⚠️ Low';
+      return '❌ Deficit';
+    }
+    if (activeGoal?.goal_type === 'maintenance') {
+      if (Math.abs(balance) <= 100) return '⚖️ Perfect!';
+      if (Math.abs(balance) <= 200) return '✅ Great!';
+      if (Math.abs(balance) <= 300) return '👍 Good';
+      return '⚠️ Off Balance';
+    }
+    if (balance >= 500) return '🔥 Excellent!';
+    if (balance >= 300) return '✅ Great!';
+    if (balance >= 100) return '👍 Good';
+    if (balance >= 0) return '⚠️ Low';
+    return '❌ Surplus';
+  };
 
   const progressPercent = Math.min(progress * 100, 100);
   const progressColor = getProgressColor(progress);
@@ -182,7 +219,10 @@ export default function HomePage() {
         {streak > 0 && (
           <div className="text-center">
             <p className="text-pixel-sm text-darkgray/70">Current Streak</p>
-            <p className="font-mono text-4xl">🔥 {streak}</p>
+            <div className="flex items-center justify-center gap-2">
+              <Flame size={32} className="text-darkgray" />
+              <p className="font-mono text-4xl">{streak}</p>
+            </div>
             <p className="text-pixel-xs">{streak === 1 ? 'day' : 'days'}</p>
           </div>
         )}
@@ -224,17 +264,17 @@ export default function HomePage() {
           </div>
         </Card>
 
-        <Card style={{ backgroundColor: deficit !== null ? deficitColor : '#FFFFFF' }}>
+        <Card style={{ backgroundColor: balance !== null ? balanceColor : '#FFFFFF' }}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingDown size={20} className="text-darkgray" />
-            <p className="text-pixel-sm text-darkgray/70">Deficit</p>
+            <p className="text-pixel-sm text-darkgray/70">{getBalanceLabel()}</p>
           </div>
           <p className="font-mono text-3xl">
-            {deficit !== null ? deficit : '—'}
+            {balance !== null ? balance : '—'}
           </p>
-          {deficit !== null && (
+          {balance !== null && (
             <p className="text-pixel-xs mt-1">
-              {deficit >= 500 ? '🔥 Excellent!' : deficit >= 300 ? '✅ Great!' : deficit >= 100 ? '👍 Good' : deficit >= 0 ? '⚠️ Low' : '❌ Surplus'}
+              {getBalanceMessage()}
             </p>
           )}
         </Card>
@@ -261,10 +301,10 @@ export default function HomePage() {
               <span>Add Water</span>
             </button>
           </Link>
-          <Link href="/deficit">
+          <Link href="/progress">
             <button className="w-full btn-pixel-success flex items-center justify-center gap-2">
               <TrendingDown size={16} />
-              <span>Calculate</span>
+              <span>Progress</span>
             </button>
           </Link>
         </div>
@@ -278,13 +318,13 @@ export default function HomePage() {
       )}
 
       {/* Motivational Message */}
-      {deficit === null && (
+      {balance === null && (
         <Card>
           <div className="text-center py-6">
             <Target size={48} className="mx-auto mb-4 text-primary" />
             <p className="font-mono text-lg mb-2">Ready to track today?</p>
             <p className="font-mono text-sm text-darkgray/70">
-              Log your meals and workouts, then calculate your deficit!
+              Log your meals and workouts, then calculate your {getBalanceLabel().toLowerCase()}!
             </p>
           </div>
         </Card>

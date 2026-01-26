@@ -26,7 +26,7 @@ export default function Input({
   return (
     <div className="mb-4">
       {label && (
-        <label className="block font-pixel text-[10px] mb-2 text-darkgray">
+        <label className="block font-pixel text-sm mb-2 text-darkgray">
           {label} {required && <span className="text-warning">*</span>}
         </label>
       )}

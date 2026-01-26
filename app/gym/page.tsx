@@ -8,9 +8,11 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, GymLog, WorkoutTemplate } from '@/types';
 import { Dumbbell, Trash2, Save, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function GymPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [gymLogs, setGymLogs] = useState<GymLog[]>([]);
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
@@ -161,6 +163,7 @@ export default function GymPage() {
       
       resetForm();
       setShowAddForm(false);
+      toast('Saved!');
     } catch (error) {
       console.error('Error adding workout:', error);
       alert('Failed to add workout');
@@ -191,7 +194,7 @@ export default function GymPage() {
         });
 
       await loadTemplates(user.id);
-      alert('Template saved! ⭐');
+      toast('Saved!');
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Failed to save template');
@@ -298,7 +301,7 @@ export default function GymPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="heading-pixel">Gym Tracker</h1>
         <div className="flex items-center gap-4">
-          <button onClick={() => changeDate(-1)} className="p-2 border-4 border-darkgray bg-white hover:bg-lavender">
+          <button onClick={() => changeDate(-1)} className="p-2 border-2 border-darkgray bg-white hover:bg-lavender">
             <ChevronLeft size={24} />
           </button>
           <div className="text-center">
@@ -316,7 +319,7 @@ export default function GymPage() {
           <button 
             onClick={() => changeDate(1)} 
             disabled={isToday}
-            className={`p-2 border-4 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
+            className={`p-2 border-2 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
           >
             <ChevronRight size={24} />
           </button>
@@ -340,12 +343,12 @@ export default function GymPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => updateChecklist('warmup_done', !warmupDone)}
-              className={`p-4 border-4 border-darkgray transition-all ${
+              className={`p-4 border-2 border-darkgray transition-all ${
                 warmupDone ? 'bg-success' : 'bg-white hover:bg-lavender'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 border-4 border-darkgray flex items-center justify-center ${
+                <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
                   warmupDone ? 'bg-darkgray' : 'bg-white'
                 }`}>
                   {warmupDone && <span className="text-white text-lg">✓</span>}
@@ -356,12 +359,12 @@ export default function GymPage() {
 
             <button
               onClick={() => updateChecklist('cooldown_done', !cooldownDone)}
-              className={`p-4 border-4 border-darkgray transition-all ${
+              className={`p-4 border-2 border-darkgray transition-all ${
                 cooldownDone ? 'bg-success' : 'bg-white hover:bg-lavender'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 border-4 border-darkgray flex items-center justify-center ${
+                <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
                   cooldownDone ? 'bg-darkgray' : 'bg-white'
                 }`}>
                   {cooldownDone && <span className="text-white text-lg">✓</span>}
@@ -372,12 +375,12 @@ export default function GymPage() {
 
             <button
               onClick={() => updateChecklist('meditation_done', !meditationDone)}
-              className={`p-4 border-4 border-darkgray transition-all ${
+              className={`p-4 border-2 border-darkgray transition-all ${
                 meditationDone ? 'bg-success' : 'bg-white hover:bg-lavender'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 border-4 border-darkgray flex items-center justify-center ${
+                <div className={`w-6 h-6 border-2 border-darkgray flex items-center justify-center ${
                   meditationDone ? 'bg-darkgray' : 'bg-white'
                 }`}>
                   {meditationDone && <span className="text-white text-lg">✓</span>}
@@ -399,7 +402,7 @@ export default function GymPage() {
               {templates.map((template) => (
                 <div
                   key={template.id}
-                  className="p-3 border-4 border-darkgray bg-secondary/20 flex justify-between items-center"
+                  className="p-3 border-2 border-darkgray bg-secondary/20 flex justify-between items-center"
                 >
                   <div className="flex-1 cursor-pointer" onClick={() => handleUseTemplate(template)}>
                     <p className="font-mono text-sm font-bold">{template.template_name}</p>
@@ -516,7 +519,7 @@ export default function GymPage() {
             {gymLogs.map((log) => (
               <div
                 key={log.id}
-                className="p-4 border-4 border-darkgray bg-secondary/20"
+                className="p-4 border-2 border-darkgray bg-secondary/20"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">

@@ -7,10 +7,12 @@ import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { User, Goal } from '@/types';
-import { calculateGoalCalories, calculateActualDeficit, calculateProgress, getProgressColor } from '@/lib/calculations';
+import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateEnergyChange, calculateProgress, getProgressColor } from '@/lib/calculations';
+import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,11 +83,27 @@ export default function ProfilePage() {
 
   const handleSaveGoal = async () => {
     if (!user) return;
+    
+    // Validate weights based on goal type
+    if (goalType === 'loss' && goalWeight >= startWeight) {
+      alert('For weight loss, goal weight must be less than start weight');
+      return;
+    }
+    if (goalType === 'gain' && goalWeight <= startWeight) {
+      alert('For weight gain, goal weight must be greater than start weight');
+      return;
+    }
+    if (goalType === 'maintenance' && Math.abs(startWeight - goalWeight) > 2) {
+      alert('For maintenance, goal weight should be close to start weight (±2kg)');
+      return;
+    }
+    
     setSaving(true);
 
     try {
-      // Calculate total caloric goal
-      const totalCalories = calculateGoalCalories(startWeight, goalWeight, goalType);
+      // Calculate total energy needed and daily target
+      const totalEnergyNeeded = calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
+      const dailyTarget = calculateDailyTargetKcal(goalType);
 
       // Deactivate old goals
       if (activeGoal) {
@@ -104,7 +122,8 @@ export default function ProfilePage() {
           start_date: startDate,
           start_weight_kg: startWeight,
           goal_weight_kg: goalWeight,
-          goal_deficit_total: totalCalories,
+          daily_target_kcal: dailyTarget,
+          total_energy_kcal_needed: totalEnergyNeeded,
           current_weight_kg: startWeight,
           is_active: true,
         })
@@ -114,7 +133,7 @@ export default function ProfilePage() {
       if (error) throw error;
 
       setActiveGoal(data);
-      alert('Goal saved successfully! 🎉');
+      toast('Saved!');
     } catch (error) {
       console.error('Error saving goal:', error);
       alert('Failed to save goal');
@@ -139,19 +158,32 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const weightDiff = Math.abs(startWeight - goalWeight);
-  const totalCalories = calculateGoalCalories(startWeight, goalWeight, goalType);
+  const totalEnergyNeeded = calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
+  const dailyTarget = calculateDailyTargetKcal(goalType);
 
   // Calculate progress
-  const actualDeficit = currentWeight && activeGoal 
-    ? calculateActualDeficit(activeGoal.start_weight_kg, currentWeight)
+  const energyChange = currentWeight && activeGoal 
+    ? calculateEnergyChange(activeGoal.start_weight_kg, currentWeight)
     : 0;
   
-  const progress = activeGoal && activeGoal.goal_deficit_total
-    ? calculateProgress(actualDeficit, activeGoal.goal_deficit_total)
+  const progress = activeGoal && activeGoal.total_energy_kcal_needed
+    ? calculateProgress(energyChange, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
     : 0;
 
   const progressPercent = Math.min(progress * 100, 100);
   const progressColor = getProgressColor(progress);
+
+  const bmi =
+    user?.height_cm && (currentWeight || activeGoal?.start_weight_kg)
+      ? (Number(currentWeight || activeGoal?.start_weight_kg) / Math.pow(Number(user.height_cm) / 100, 2))
+      : null;
+
+  const bmiLabel = (value: number) => {
+    if (value < 18.5) return 'Underweight';
+    if (value < 25) return 'Normal';
+    if (value < 30) return 'Overweight';
+    return 'Obese';
+  };
 
   return (
     <div className="container-pixel">
@@ -198,7 +230,7 @@ export default function ProfilePage() {
               <label className="block text-pixel-sm mb-2">Goal Type</label>
               <select
                 value={goalType}
-                onChange={(e) => setGoalType(e.target.value as any)}
+                onChange={(e) => setGoalType(e.target.value as 'loss' | 'gain' | 'maintenance')}
                 className="input-pixel w-full"
               >
                 <option value="loss">Weight Loss</option>
@@ -231,6 +263,7 @@ export default function ProfilePage() {
               label="Goal Weight (kg)"
               value={goalWeight}
               onChange={(e) => setGoalWeight(parseFloat(e.target.value))}
+              placeholder={goalType === 'loss' ? '55' : goalType === 'gain' ? '65' : '60'}
               step={0.1}
               required
             />
@@ -243,9 +276,17 @@ export default function ProfilePage() {
                   {goalType === 'loss' ? 'Lose' : goalType === 'gain' ? 'Gain' : 'Maintain'}{' '}
                   {weightDiff.toFixed(1)} kg
                 </p>
-                {goalType !== 'maintenance' && (
+                {totalEnergyNeeded !== null && (
                   <p className="font-mono text-sm">
-                    Total Needed Deficit: {totalCalories.toLocaleString()} calories
+                    {goalType === 'loss' ? 'Total Deficit Needed' : 'Total Surplus Needed'}: {totalEnergyNeeded.toLocaleString()} calories
+                  </p>
+                )}
+                <p className="font-mono text-sm">
+                  Daily Target: {dailyTarget > 0 ? '+' : ''}{dailyTarget} kcal
+                </p>
+                {bmi !== null && (
+                  <p className="font-mono text-sm mt-2">
+                    BMI: {bmi.toFixed(1)} ({bmiLabel(bmi)})
                   </p>
                 )}
               </div>
@@ -284,15 +325,28 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <p className="text-pixel-sm text-darkgray/70">Total Needed Deficit</p>
+              <p className="text-pixel-sm text-darkgray/70">
+                {activeGoal.goal_type === 'maintenance'
+                  ? 'Daily Target'
+                  : activeGoal.goal_type === 'loss'
+                    ? 'Total Deficit Needed'
+                    : 'Total Surplus Needed'}
+              </p>
               <p className="font-mono text-lg">
-                {activeGoal.goal_deficit_total?.toLocaleString() || 0} cal
+                {activeGoal.goal_type === 'maintenance' 
+                  ? `${activeGoal.daily_target_kcal > 0 ? '+' : ''}${activeGoal.daily_target_kcal} kcal/day`
+                  : `${activeGoal.total_energy_kcal_needed?.toLocaleString() || 0} cal`
+                }
               </p>
             </div>
             <div>
-              <p className="text-pixel-sm text-darkgray/70">Cumulative Deficit</p>
+              <p className="text-pixel-sm text-darkgray/70">
+                {activeGoal.goal_type === 'loss' ? 'Cumulative Deficit' : 
+                 activeGoal.goal_type === 'gain' ? 'Cumulative Surplus' : 
+                 'Energy Change'}
+              </p>
               <p className="font-mono text-lg">
-                {actualDeficit.toLocaleString()} cal
+                {energyChange.toLocaleString()} cal
               </p>
             </div>
           </div>

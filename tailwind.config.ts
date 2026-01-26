@@ -26,8 +26,8 @@ export default {
         mono: ['"VT323"', 'monospace'],
       },
       boxShadow: {
-        pixel: '4px 4px 0px 0px rgba(0,0,0,0.1)',
-        'pixel-lg': '8px 8px 0px 0px rgba(0,0,0,0.1)',
+        pixel: '3px 3px 0px 0px rgba(0,0,0,0.1)',
+        'pixel-lg': '6px 6px 0px 0px rgba(0,0,0,0.1)',
       },
     },
   },

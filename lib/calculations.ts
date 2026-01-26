@@ -15,29 +15,87 @@ export function calculateDeficit(bmr: number, netIntake: number): number {
   return bmr - netIntake;
 }
 
-export function calculateGoalCalories(startWeight: number, goalWeight: number, goalType: 'loss' | 'gain' | 'maintenance'): number {
-  if (goalType === 'maintenance') return 0;
+export function calculateGoalEnergyNeeded(startWeight: number, goalWeight: number, goalType: 'loss' | 'gain' | 'maintenance'): number | null {
+  if (goalType === 'maintenance') return null;
   const weightDifference = Math.abs(startWeight - goalWeight);
   return Math.round(weightDifference * 7700);
 }
 
+export function calculateDailyTargetKcal(goalType: 'loss' | 'gain' | 'maintenance'): number {
+  if (goalType === 'loss') return -300;
+  if (goalType === 'gain') return 300;
+  return 0; // maintenance
+}
+
+export function calculateEnergyChange(startWeight: number, currentWeight: number): number {
+  const weightDelta = currentWeight - startWeight;
+  return Math.round(weightDelta * 7700);
+}
+
+export function calculateProgress(
+  energyChange: number, 
+  totalEnergyNeeded: number | null, 
+  goalType: 'loss' | 'gain' | 'maintenance'
+): number {
+  if (!totalEnergyNeeded || totalEnergyNeeded === 0) return 0;
+  
+  if (goalType === 'loss') {
+    // For loss: energyChange is negative (weight loss), we want it to approach -totalEnergyNeeded
+    // Progress = abs(energyChange) / totalEnergyNeeded
+    return Math.min(Math.abs(energyChange) / totalEnergyNeeded, 1);
+  } else if (goalType === 'gain') {
+    // For gain: energyChange is positive (weight gain), we want it to approach totalEnergyNeeded
+    // Progress = energyChange / totalEnergyNeeded
+    return Math.min(energyChange / totalEnergyNeeded, 1);
+  }
+  
+  // Maintenance: progress based on adherence (handled separately)
+  return 0;
+}
+
+// Legacy function names for backward compatibility
+export function calculateGoalCalories(startWeight: number, goalWeight: number, goalType: 'loss' | 'gain' | 'maintenance'): number | null {
+  return calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
+}
+
 export function calculateActualDeficit(startWeight: number, currentWeight: number): number {
-  const weightLoss = startWeight - currentWeight;
-  return Math.round(weightLoss * 7700);
+  return calculateEnergyChange(startWeight, currentWeight);
 }
 
-export function calculateProgress(actualDeficit: number, goalDeficit: number): number {
-  if (goalDeficit === 0) return 0;
-  return actualDeficit / goalDeficit;
-}
-
-export function getDeficitColor(deficit: number): string {
-  if (deficit >= 500) return '#C6EFCE';
-  if (deficit >= 300) return '#E2F0D9';
-  if (deficit >= 100) return '#FFF2CC';
-  if (deficit >= 0) return '#FCE4D6';
-  if (deficit >= -100) return '#FDE9D9';
-  if (deficit >= -300) return '#FADBD8';
+export function getDeficitColor(balance: number, goalType?: 'loss' | 'gain' | 'maintenance'): string {
+  // For loss: positive balance (deficit) is good
+  if (goalType === 'loss') {
+    if (balance >= 500) return '#C6EFCE';  // Excellent deficit
+    if (balance >= 300) return '#E2F0D9';  // Great deficit
+    if (balance >= 100) return '#FFF2CC';  // Good deficit
+    if (balance >= 0) return '#FCE4D6';    // Low deficit
+    return '#FADBD8';  // Surplus (not good for loss)
+  }
+  
+  // For gain: negative balance (surplus) is good
+  if (goalType === 'gain') {
+    if (balance <= -500) return '#C6EFCE';  // Excellent surplus
+    if (balance <= -300) return '#E2F0D9';  // Great surplus
+    if (balance <= -100) return '#FFF2CC';  // Good surplus
+    if (balance <= 0) return '#FCE4D6';     // Low surplus
+    return '#FADBD8';  // Deficit (not good for gain)
+  }
+  
+  // For maintenance: near zero is good
+  if (goalType === 'maintenance') {
+    if (Math.abs(balance) <= 100) return '#C6EFCE';  // Excellent balance
+    if (Math.abs(balance) <= 200) return '#E2F0D9';  // Good balance
+    if (Math.abs(balance) <= 300) return '#FFF2CC';  // Acceptable
+    return '#FCE4D6';  // Too far from balance
+  }
+  
+  // Default (no goal): original logic
+  if (balance >= 500) return '#C6EFCE';
+  if (balance >= 300) return '#E2F0D9';
+  if (balance >= 100) return '#FFF2CC';
+  if (balance >= 0) return '#FCE4D6';
+  if (balance >= -100) return '#FDE9D9';
+  if (balance >= -300) return '#FADBD8';
   return '#F4CCCC';
 }
 
