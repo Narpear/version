@@ -56,7 +56,9 @@ export default function PrivacyPage() {
             <p className="font-bold mb-2">Developer data access</p>
             <p className="mb-2">
               As the sole developer and operator of this app, I have the technical ability to access the database. 
+              <br></br>
               However,
+              <br></br>
               <b>I want to be clear: I do not look at your personal data. Your logs, goals, and daily entries are private, and I respect that boundary completely. The app is designed to work without any need for me to access individual user information.</b>
             </p>
           </div>
