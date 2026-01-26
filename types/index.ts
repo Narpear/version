@@ -70,3 +70,27 @@ export interface SkincareLog {
   moisturizer_done: boolean;
   gua_sha_done: boolean;
 }
+
+export interface FoodTemplate {
+  id: string;
+  user_id: string;
+  template_name: string;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack' | null;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fats_g: number;
+  is_healthy: boolean;
+}
+
+export interface WorkoutTemplate {
+  id: string;
+  user_id: string;
+  template_name: string;
+  exercise_name: string;
+  sets: number | null;
+  reps: number | null;
+  weight_kg: number | null;
+  calories_burned: number;
+  notes: string | null;
+}

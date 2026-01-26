@@ -6,15 +6,20 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
-import { User, FoodLog } from '@/types';
-import { Utensils, Trash2 } from 'lucide-react';
+import { User, FoodLog, FoodTemplate } from '@/types';
+import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
 export default function FoodPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
+  const [templates, setTemplates] = useState<FoodTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  // Date state
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Form state
   const [mealName, setMealName] = useState('');
@@ -26,6 +31,7 @@ export default function FoodPage() {
   const [isHealthy, setIsHealthy] = useState(true);
 
   const today = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === today;
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -36,27 +42,46 @@ export default function FoodPage() {
     
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
-    loadTodayFood(parsedUser.id);
-  }, [router]);
+    loadFoodData(parsedUser.id, selectedDate);
+    loadTemplates(parsedUser.id);
+  }, [router, selectedDate]);
 
-  const loadTodayFood = async (userId: string) => {
+  const loadFoodData = async (userId: string, date: string) => {
     try {
       const { data, error } = await supabase
         .from('food_logs')
         .select('*')
         .eq('user_id', userId)
-        .eq('date', today)
+        .eq('date', date)
         .order('created_at', { ascending: true });
 
       if (data) {
         setFoodLogs(data);
-        // Update daily totals
-        await updateDailyTotals(userId, data);
+        // Update daily totals only if it's today
+        if (date === today) {
+          await updateDailyTotals(userId, data);
+        }
       }
     } catch (error) {
-      console.log('No food logs for today');
+      console.log('No food logs for this date');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTemplates = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('food_templates')
+        .select('*')
+        .eq('user_id', userId)
+        .order('template_name');
+
+      if (data) {
+        setTemplates(data);
+      }
+    } catch (error) {
+      console.log('No templates found');
     }
   };
 
@@ -68,7 +93,7 @@ export default function FoodPage() {
         .from('daily_entries')
         .select('id')
         .eq('user_id', userId)
-        .eq('date', today)
+        .eq('date', selectedDate)
         .single();
 
       if (existing) {
@@ -81,7 +106,7 @@ export default function FoodPage() {
           .from('daily_entries')
           .insert({
             user_id: userId,
-            date: today,
+            date: selectedDate,
             total_calories_in: totalCaloriesIn,
             total_calories_out: 0,
             water_glasses: 0,
@@ -111,7 +136,7 @@ export default function FoodPage() {
         .from('food_logs')
         .insert({
           user_id: user.id,
-          date: today,
+          date: selectedDate,
           meal_name: mealName,
           meal_type: mealType,
           calories: calories,
@@ -127,13 +152,70 @@ export default function FoodPage() {
 
       const updatedLogs = [...foodLogs, data];
       setFoodLogs(updatedLogs);
-      await updateDailyTotals(user.id, updatedLogs);
+      if (isToday) {
+        await updateDailyTotals(user.id, updatedLogs);
+      }
       
       resetForm();
       setShowAddForm(false);
     } catch (error) {
       console.error('Error adding food:', error);
       alert('Failed to add food');
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!user || !mealName || calories <= 0) {
+      alert('Please fill in meal details first');
+      return;
+    }
+
+    try {
+      await supabase
+        .from('food_templates')
+        .insert({
+          user_id: user.id,
+          template_name: mealName,
+          meal_type: mealType,
+          calories: calories,
+          protein_g: protein,
+          carbs_g: carbs,
+          fats_g: fats,
+          is_healthy: isHealthy,
+        });
+
+      await loadTemplates(user.id);
+      alert('Template saved! ⭐');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template');
+    }
+  };
+
+  const handleUseTemplate = (template: FoodTemplate) => {
+    setMealName(template.template_name);
+    setMealType(template.meal_type || 'breakfast');
+    setCalories(template.calories);
+    setProtein(template.protein_g);
+    setCarbs(template.carbs_g);
+    setFats(template.fats_g);
+    setIsHealthy(template.is_healthy);
+    setShowTemplates(false);
+    setShowAddForm(true);
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Delete this template?')) return;
+
+    try {
+      await supabase
+        .from('food_templates')
+        .delete()
+        .eq('id', id);
+
+      await loadTemplates(user!.id);
+    } catch (error) {
+      console.error('Error deleting template:', error);
     }
   };
 
@@ -148,11 +230,19 @@ export default function FoodPage() {
 
       const updatedLogs = foodLogs.filter(log => log.id !== id);
       setFoodLogs(updatedLogs);
-      await updateDailyTotals(user.id, updatedLogs);
+      if (isToday) {
+        await updateDailyTotals(user.id, updatedLogs);
+      }
     } catch (error) {
       console.error('Error deleting food:', error);
       alert('Failed to delete food');
     }
+  };
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate.toISOString().split('T')[0]);
   };
 
   if (loading) {
@@ -180,12 +270,76 @@ export default function FoodPage() {
 
   return (
     <div className="container-pixel">
+      {/* Date Navigation */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="heading-pixel">Food Tracker</h1>
-        <Button onClick={() => setShowAddForm(!showAddForm)}>
+        <div className="flex items-center gap-4">
+          <button onClick={() => changeDate(-1)} className="p-2 border-4 border-darkgray bg-white hover:bg-lavender">
+            <ChevronLeft size={24} />
+          </button>
+          <div className="text-center">
+            <p className="font-mono text-lg">
+              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={today}
+              className="text-pixel-xs border-2 border-darkgray p-1 mt-1"
+            />
+          </div>
+          <button 
+            onClick={() => changeDate(1)} 
+            disabled={isToday}
+            className={`p-2 border-4 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-4 mb-6">
+        <Button onClick={() => { setShowAddForm(!showAddForm); setShowTemplates(false); }}>
           {showAddForm ? 'Cancel' : '+ Add Food'}
         </Button>
+        <Button onClick={() => { setShowTemplates(!showTemplates); setShowAddForm(false); }} variant="secondary">
+          <Star size={16} className="inline mr-2" />
+          Templates ({templates.length})
+        </Button>
       </div>
+
+      {/* Templates List */}
+      {showTemplates && (
+        <Card title="Your Food Templates" className="mb-6">
+          {templates.length === 0 ? (
+            <p className="font-mono text-sm text-darkgray/70">No templates saved yet. Add food and click "Save as Template"</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {templates.map((template) => (
+                <div
+                  key={template.id}
+                  className="p-3 border-4 border-darkgray bg-accent/20 flex justify-between items-center"
+                >
+                  <div className="flex-1 cursor-pointer" onClick={() => handleUseTemplate(template)}>
+                    <p className="font-mono text-sm font-bold">{template.template_name}</p>
+                    <p className="text-pixel-xs text-darkgray/70">
+                      {template.calories} cal • {template.protein_g}g protein
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Add Food Form */}
       {showAddForm && (
@@ -271,9 +425,15 @@ export default function FoodPage() {
               </label>
             </div>
 
-            <Button type="submit" className="w-full mt-6">
-              Add Food
-            </Button>
+            <div className="flex gap-4 mt-6">
+              <Button type="submit" className="flex-1">
+                Add Food
+              </Button>
+              <Button type="button" onClick={handleSaveAsTemplate} variant="secondary">
+                <Save size={16} className="inline mr-2" />
+                Save as Template
+              </Button>
+            </div>
           </form>
         </Card>
       )}
@@ -341,11 +501,11 @@ export default function FoodPage() {
         )
       ))}
 
-      {foodLogs.length === 0 && !showAddForm && (
+      {foodLogs.length === 0 && !showAddForm && !showTemplates && (
         <Card>
           <div className="text-center py-8">
             <Utensils size={48} className="mx-auto mb-4 text-darkgray/30" />
-            <p className="font-mono text-lg text-darkgray/70">No meals logged today</p>
+            <p className="font-mono text-lg text-darkgray/70">No meals logged for this day</p>
             <p className="font-mono text-sm text-darkgray/50 mt-2">Click "Add Food" to get started!</p>
           </div>
         </Card>

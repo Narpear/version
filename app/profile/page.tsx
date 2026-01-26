@@ -181,6 +181,13 @@ export default function ProfilePage() {
           <Button onClick={handleLogout} variant="secondary" className="w-full mt-6">
             Logout
           </Button>
+          <p className="text-center font-mono text-xs mt-4 text-darkgray/50">
+            View the {' '}
+            <a href="/privacy" className="text-primary underline">
+              Privacy Policy
+            </a>
+          </p>
+          <br></br>
         </Card>
 
         {/* Goal Settings Card */}

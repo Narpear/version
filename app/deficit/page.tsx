@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import WeightChart from '@/components/WeightChart';
 import { supabase } from '@/lib/supabase';
 import { User, DailyEntry, Goal } from '@/types';
 import { calculateBMR, calculateNetIntake, calculateDeficit, getDeficitColor, calculateActualDeficit, calculateProgress, getProgressColor } from '@/lib/calculations';
@@ -15,10 +16,10 @@ export default function DeficitPage() {
   const [user, setUser] = useState<User | null>(null);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [dailyEntry, setDailyEntry] = useState<DailyEntry | null>(null);
+  const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
 
-  // Form state
   const [todayWeight, setTodayWeight] = useState(0);
 
   const today = new Date().toISOString().split('T')[0];
@@ -63,6 +64,27 @@ export default function DeficitPage() {
           setTodayWeight(entryData.weight_kg);
         }
       }
+
+      // Load weight history (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: historyData } = await supabase
+        .from('daily_entries')
+        .select('date, weight_kg')
+        .eq('user_id', userId)
+        .not('weight_kg', 'is', null)
+        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+
+      if (historyData) {
+        const formattedData = historyData.map(entry => ({
+          date: entry.date,
+          weight: entry.weight_kg,
+          displayDate: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }));
+        setWeightHistory(formattedData);
+      }
     } catch (error) {
       console.log('No data found');
     } finally {
@@ -79,7 +101,6 @@ export default function DeficitPage() {
     setCalculating(true);
 
     try {
-      // Get today's calories in and out
       const { data: entryData } = await supabase
         .from('daily_entries')
         .select('*')
@@ -90,14 +111,10 @@ export default function DeficitPage() {
       const caloriesIn = entryData?.total_calories_in || 0;
       const caloriesOut = entryData?.total_calories_out || 0;
 
-      // Calculate BMR
       const bmr = calculateBMR(todayWeight, user.height_cm, user.age, user.gender);
-
-      // Calculate net intake and deficit
       const netIntake = calculateNetIntake(caloriesIn, caloriesOut);
       const deficit = calculateDeficit(bmr, netIntake);
 
-      // Update or create daily entry
       if (entryData) {
         await supabase
           .from('daily_entries')
@@ -124,7 +141,6 @@ export default function DeficitPage() {
           });
       }
 
-      // Update goal's current weight
       if (activeGoal) {
         await supabase
           .from('goals')
@@ -132,7 +148,6 @@ export default function DeficitPage() {
           .eq('id', activeGoal.id);
       }
 
-      // Reload data
       await loadData(user.id);
       alert('Deficit calculated successfully! ✅');
     } catch (error) {
@@ -158,7 +173,6 @@ export default function DeficitPage() {
   const deficit = dailyEntry?.caloric_deficit || 0;
   const deficitColor = getDeficitColor(deficit);
 
-  // Overall progress
   const actualDeficit = activeGoal && dailyEntry?.weight_kg
     ? calculateActualDeficit(activeGoal.start_weight_kg, dailyEntry.weight_kg)
     : 0;
@@ -174,6 +188,13 @@ export default function DeficitPage() {
     <div className="container-pixel">
       <h1 className="heading-pixel">Caloric Deficit Calculator</h1>
       <p className="font-mono text-lg mb-6">Track your daily deficit and progress</p>
+
+      {/* Weight Chart */}
+      {weightHistory.length > 0 && (
+        <Card title="Weight Progress (Last 30 Days)" className="mb-6">
+          <WeightChart data={weightHistory} goal={activeGoal} />
+        </Card>
+      )}
 
       {/* Weight Input & Calculate Button */}
       <Card title="Today's Weight & Calculation" className="mb-6">

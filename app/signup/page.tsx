@@ -12,23 +12,17 @@ export default function SignupPage() {
     email: '',
     password: '',
     name: '',
-    height_cm: 0,
-    age: 0,
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = field === 'height_cm' || field === 'age' 
-      ? parseFloat(e.target.value) || 0
-      : e.target.value;
-    setFormData({ ...formData, [field]: value });
+    setFormData({ ...formData, [field]: e.target.value });
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
@@ -39,8 +33,9 @@ export default function SignupPage() {
           email: formData.email,
           password: formData.password,
           name: formData.name,
-          height_cm: formData.height_cm,
-          age: formData.age,
+          // Default values - will be updated in onboarding
+          height_cm: 160,
+          age: 25,
         }),
       });
 
@@ -48,6 +43,8 @@ export default function SignupPage() {
 
       if (res.ok) {
         setSuccess(true);
+        // Store that they need onboarding
+        localStorage.setItem('needsOnboarding', 'true');
         setTimeout(() => {
           router.push('/login');
         }, 2000);
@@ -106,30 +103,19 @@ export default function SignupPage() {
             required
           />
 
-          <Input
-            type="number"
-            label="Height (cm)"
-            value={formData.height_cm}
-            onChange={handleChange('height_cm')}
-            placeholder="160"
-            required
-            step={0.1}
-          />
-
-          <Input
-            type="number"
-            label="Age"
-            value={formData.age}
-            onChange={handleChange('age')}
-            placeholder="25"
-            required
-          />
-
           {error && (
             <div className="mb-4 p-3 bg-warning border-2 border-darkgray">
               <p className="text-pixel-sm text-darkgray">{error}</p>
             </div>
           )}
+
+          <p className="text-center font-mono text-xs mt-4 text-darkgray/50">
+            By signing up, you agree to our{' '}
+            <a href="/privacy" className="text-primary underline">
+              Privacy Policy
+            </a>
+          </p>
+          <br></br>
 
           <Button type="submit" disabled={loading} className="w-full mb-4">
             {loading ? 'Creating...' : 'Create Account'}
