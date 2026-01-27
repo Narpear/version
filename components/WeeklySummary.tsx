@@ -125,33 +125,33 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
   if (goalType === 'loss') {
     // For weight loss: want deficit >= daily_target_kcal (e.g., >= -300)
     daysHitGoal = weekData.filter(d => 
-      d.caloric_deficit !== null && d.caloric_deficit >= goalThreshold
+      (d.apparent_deficit ?? 0) >= goalThreshold
     ).length;
     goalLabel = 'Hit Deficit Goal';
-    const totalDeficit = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
+    const totalDeficit = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalDeficit / Math.max(daysLogged, 1));
   } else if (goalType === 'gain') {
     // For weight gain: want surplus (negative deficit) <= daily_target_kcal (e.g., <= +300)
     daysHitGoal = weekData.filter(d => 
-      d.caloric_deficit !== null && d.caloric_deficit <= goalThreshold
+      (d.apparent_deficit ?? 0) <= goalThreshold
     ).length;
     goalLabel = 'Hit Surplus Goal';
-    const totalSurplus = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
+    const totalSurplus = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalSurplus / Math.max(daysLogged, 1));
   } else if (goalType === 'maintenance') {
     // For maintenance: want balance within ±200 kcal
     const maintenanceWindow = 200;
     daysHitGoal = weekData.filter(d => 
-      d.caloric_deficit !== null && Math.abs(d.caloric_deficit) <= maintenanceWindow
+      Math.abs(d.apparent_deficit ?? 0) <= maintenanceWindow
     ).length;
     goalLabel = 'Stayed Balanced';
-    const totalBalance = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
+    const totalBalance = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalBalance / Math.max(daysLogged, 1));
   } else {
     // No goal set: just show days with any deficit/surplus tracked
-    daysHitGoal = weekData.filter(d => d.caloric_deficit !== null).length;
+    daysHitGoal = weekData.filter(d => d.apparent_deficit !== null && d.apparent_deficit !== undefined).length;
     goalLabel = 'Days Calculated';
-    const totalBalance = weekData.reduce((sum, d) => sum + (d.caloric_deficit || 0), 0);
+    const totalBalance = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalBalance / Math.max(daysLogged, 1));
   }
 
