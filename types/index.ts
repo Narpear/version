@@ -1,10 +1,12 @@
 export interface User {
   id: string;
+  name: string;
   email: string;
-  name: string | null;
   height_cm: number;
   age: number;
-  gender: string;
+  gender: 'male' | 'female';
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Goal {
@@ -15,9 +17,13 @@ export interface Goal {
   start_weight_kg: number;
   current_weight_kg: number | null;
   goal_weight_kg: number;
-  daily_target_kcal: number;  // -300 for loss, +300 for gain, 0 for maintenance
-  total_energy_kcal_needed: number | null;  // NULL for maintenance
+  total_energy_kcal_needed: number | null;
+  daily_target_kcal: number;
+  cumulative_apparent_deficit?: number;  // NEW
+  cumulative_actual_deficit?: number;    // NEW
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DailyEntry {
@@ -29,8 +35,12 @@ export interface DailyEntry {
   total_calories_in: number;
   total_calories_out: number;
   net_intake: number | null;
-  caloric_deficit: number | null;
+  caloric_deficit?: number | null;       // DEPRECATED - keep for backwards compatibility
+  apparent_deficit?: number | null;      // NEW - from food/gym
+  actual_deficit?: number | null;        // NEW - from weight change
   water_glasses: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface GymLog {

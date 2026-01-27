@@ -10,14 +10,16 @@ import { supabase } from '@/lib/supabase';
 import { DailyEntry, Goal, User } from '@/types';
 import {
   calculateBMR,
-  calculateDeficit,
-  calculateEnergyChange,
+  calculateApparentDeficit,
+  calculateActualDeficit,
   calculateNetIntake,
   calculateProgress,
-  getDeficitColor,
+  getApparentDeficitColor,
   getProgressColor,
+  getApparentDeficitMessage,
+  formatDeficitSurplus,
 } from '@/lib/calculations';
-import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap } from 'lucide-react';
+import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ProgressPage() {
@@ -29,6 +31,7 @@ export default function ProgressPage() {
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [showProgressInfo, setShowProgressInfo] = useState(false);
 
   const [todayWeight, setTodayWeight] = useState(0);
 
@@ -57,6 +60,32 @@ export default function ProgressPage() {
         .single();
 
       if (goalData) {
+        // Calculate cumulative deficits from all entries since goal start
+        const { data: allEntries } = await supabase
+          .from('daily_entries')
+          .select('apparent_deficit, actual_deficit')
+          .eq('user_id', userId)
+          .gte('date', goalData.start_date)
+          .not('apparent_deficit', 'is', null);
+          
+        if (allEntries) {
+          const cumulativeApparent = allEntries.reduce((sum, e) => sum + (e.apparent_deficit || 0), 0);
+          const cumulativeActual = allEntries.reduce((sum, e) => sum + (e.actual_deficit || 0), 0);
+          
+          // Update goal with cumulative values
+          await supabase
+            .from('goals')
+            .update({
+              cumulative_apparent_deficit: cumulativeApparent,
+              cumulative_actual_deficit: cumulativeActual
+            })
+            .eq('id', goalData.id);
+            
+          // Update local state
+          goalData.cumulative_apparent_deficit = cumulativeApparent;
+          goalData.cumulative_actual_deficit = cumulativeActual;
+        }
+        
         setActiveGoal(goalData);
       }
 
@@ -104,7 +133,7 @@ export default function ProgressPage() {
 
   const handleCalculate = async () => {
     if (!user || todayWeight <= 0) {
-      alert('Please enter your weight for today');
+      toast('Please enter your weight for today');
       return;
     }
 
@@ -123,7 +152,17 @@ export default function ProgressPage() {
 
       const bmr = calculateBMR(todayWeight, user.height_cm, user.age, user.gender);
       const netIntake = calculateNetIntake(caloriesIn, caloriesOut);
-      const deficit = calculateDeficit(bmr, netIntake);
+      const apparentDeficit = calculateApparentDeficit(bmr, netIntake);
+
+      // Calculate actual deficit if we have both start weight and current weight
+      let actualDeficit = 0;
+      if (activeGoal && activeGoal.start_weight_kg && todayWeight) {
+        actualDeficit = calculateActualDeficit(
+          activeGoal.start_weight_kg,
+          todayWeight,
+          activeGoal.goal_type
+        );
+      }
 
       if (entryData) {
         await supabase
@@ -132,7 +171,8 @@ export default function ProgressPage() {
             weight_kg: todayWeight,
             bmr: bmr,
             net_intake: netIntake,
-            caloric_deficit: deficit,
+            apparent_deficit: apparentDeficit,
+            actual_deficit: actualDeficit,
           })
           .eq('id', entryData.id);
       } else {
@@ -144,7 +184,8 @@ export default function ProgressPage() {
           total_calories_in: caloriesIn,
           total_calories_out: caloriesOut,
           net_intake: netIntake,
-          caloric_deficit: deficit,
+          apparent_deficit: apparentDeficit,
+          actual_deficit: actualDeficit,
           water_glasses: 0,
         });
       }
@@ -157,7 +198,7 @@ export default function ProgressPage() {
       toast('Saved!');
     } catch (error) {
       console.error('Error calculating:', error);
-      alert('Failed to calculate');
+      toast('Failed to calculate');
     } finally {
       setCalculating(false);
     }
@@ -175,13 +216,11 @@ export default function ProgressPage() {
   const caloriesIn = dailyEntry?.total_calories_in || 0;
   const caloriesOut = dailyEntry?.total_calories_out || 0;
   const netIntake = dailyEntry?.net_intake || 0;
-  const balance = dailyEntry?.caloric_deficit || 0;
-  const deficitColor = getDeficitColor(balance, activeGoal?.goal_type);
-
-  const energyChange = activeGoal && dailyEntry?.weight_kg ? calculateEnergyChange(activeGoal.start_weight_kg, dailyEntry.weight_kg) : 0;
+  const apparentDeficit = dailyEntry?.apparent_deficit || 0;
+  const apparentDeficitColor = getApparentDeficitColor(apparentDeficit, activeGoal?.goal_type);
 
   const progress = activeGoal && activeGoal.total_energy_kcal_needed
-    ? calculateProgress(energyChange, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
+    ? calculateProgress(activeGoal.cumulative_actual_deficit || 0, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
     : 0;
 
   // Goal-aware labels
@@ -197,34 +236,6 @@ export default function ProgressPage() {
     if (activeGoal?.goal_type === 'gain') return 'Surplus';
     if (activeGoal?.goal_type === 'maintenance') return 'Balance';
     return 'Balance';
-  };
-
-  const getBalanceMessage = () => {
-    if (activeGoal?.goal_type === 'loss') {
-      if (balance >= 500) return 'Excellent';
-      if (balance >= 300) return 'Great';
-      if (balance >= 100) return 'Good';
-      if (balance >= 0) return 'Low';
-      return 'Surplus';
-    }
-    if (activeGoal?.goal_type === 'gain') {
-      if (balance <= -500) return 'Excellent';
-      if (balance <= -300) return 'Great';
-      if (balance <= -100) return 'Good';
-      if (balance <= 0) return 'Low';
-      return 'Deficit';
-    }
-    if (activeGoal?.goal_type === 'maintenance') {
-      if (Math.abs(balance) <= 100) return 'Perfect';
-      if (Math.abs(balance) <= 200) return 'Great';
-      if (Math.abs(balance) <= 300) return 'Good';
-      return 'Off Balance';
-    }
-    if (balance >= 500) return 'Excellent';
-    if (balance >= 300) return 'Great';
-    if (balance >= 100) return 'Good';
-    if (balance >= 0) return 'Low';
-    return 'Surplus';
   };
 
   const progressPercent = Math.min(progress * 100, 100);
@@ -289,9 +300,9 @@ export default function ProgressPage() {
           />
           <div className="flex items-end gap-4 mt-7">
             <Button onClick={handleCalculate} disabled={calculating || todayWeight <= 0} className="flex-1">
-              {calculating ? 'Calculating...' : dailyEntry?.caloric_deficit ? 'Recalculate' : `Calculate ${getBalanceLabel()}`}
+              {calculating ? 'Calculating...' : dailyEntry?.apparent_deficit !== undefined && dailyEntry?.apparent_deficit !== null ? 'Recalculate' : `Calculate ${getBalanceLabel()}`}
             </Button>
-            {dailyEntry?.caloric_deficit && (
+            {dailyEntry?.apparent_deficit !== undefined && dailyEntry?.apparent_deficit !== null && (
               <Button onClick={handleCalculate} disabled={calculating} variant="secondary">
                 <RefreshCw size={20} />
               </Button>
@@ -304,14 +315,14 @@ export default function ProgressPage() {
       </Card>
 
       {/* Today's Stats */}
-      {dailyEntry && dailyEntry.caloric_deficit !== null && (
+      {dailyEntry && dailyEntry.apparent_deficit !== null && dailyEntry.apparent_deficit !== undefined && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <Card>
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-pixel-sm text-darkgray/70">BMR</p>
+                <p className="text-pixel-sm text-darkgray/70">Resting BMR</p>
                 <span
-                  className="inline-flex items-center justify-center"
+                  className="inline-flex items-center justify-center cursor-help"
                   title="BMR is the calories your body burns at rest. We estimate it using the Mifflin-St Jeor formula."
                 >
                   <Info size={14} className="text-darkgray/70" />
@@ -335,25 +346,36 @@ export default function ProgressPage() {
               <p className="font-mono text-2xl">{netIntake}</p>
               <p className="font-mono text-xs text-darkgray/50">in - out</p>
             </Card>
-            <Card style={{ backgroundColor: deficitColor }}>
-              <p className="text-pixel-sm text-darkgray/70 mb-1">{getBalanceLabel()}</p>
-              <p className="font-mono text-2xl font-bold">{balance}</p>
-              <p className="font-mono text-xs text-darkgray/50">{getBalanceMessage()}</p>
+            <Card style={{ backgroundColor: apparentDeficitColor }}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-pixel-sm text-darkgray/70">Apparent {getBalanceLabel()}</p>
+                <span
+                  className="inline-flex items-center justify-center cursor-help"
+                  title="Based on your food and gym tracking"
+                >
+                  <Info size={14} className="text-darkgray/70" />
+                </span>
+              </div>
+              <p className="font-mono text-2xl font-bold">{apparentDeficit}</p>
+              <p className="font-mono text-xs text-darkgray/50">{getApparentDeficitMessage(apparentDeficit, activeGoal?.goal_type || 'loss')}</p>
             </Card>
           </div>
 
-          <Card title="How It's Calculated" className="mb-6">
+          <Card title="How It's Calculated (Resting BMR)" className="mb-6">
             <div className="font-mono text-sm space-y-2">
               <p>
-                BMR (Mifflin-St Jeor): (10 × {todayWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) - 161 ={' '}
+                BMR (Mifflin-St Jeor): (10 × {todayWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
                 <strong>{bmr} cal</strong>
               </p>
               <p>
                 Net Intake: {caloriesIn} (food) - {caloriesOut} (gym) = <strong>{netIntake} cal</strong>
               </p>
               <p>
-                Caloric {getBalanceLabel()}: {bmr} (BMR) - {netIntake} (net) ={' '}
-                <strong style={{ color: balance >= 0 ? '#2d7a2d' : '#c92a2a' }}>{balance} cal</strong>
+                Apparent {getBalanceLabel()}: {bmr} (BMR) - {netIntake} (net) ={' '}
+                <strong style={{ color: apparentDeficit >= 0 ? '#2d7a2d' : '#c92a2a' }}>{apparentDeficit} cal</strong>
+              </p>
+              <p className="text-darkgray/70 text-xs mt-2">
+                This is what your food/gym tracking suggests. Your actual deficit/surplus is calculated from weight change.
               </p>
             </div>
           </Card>
@@ -377,19 +399,19 @@ export default function ProgressPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Start Weight</p>
-              <p className="font-mono text-xl">{activeGoal.start_weight_kg} kg</p>
+              <p className="font-mono text-2xl font-bold">{activeGoal.start_weight_kg} kg</p>
             </div>
             <div>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Current Weight</p>
-              <p className="font-mono text-xl">{dailyEntry?.weight_kg || activeGoal.start_weight_kg} kg</p>
+              <p className="font-mono text-2xl font-bold">{dailyEntry?.weight_kg || activeGoal.start_weight_kg} kg</p>
             </div>
             <div>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Goal Weight</p>
-              <p className="font-mono text-xl">{activeGoal.goal_weight_kg} kg</p>
+              <p className="font-mono text-2xl font-bold">{activeGoal.goal_weight_kg} kg</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
               <p className="text-pixel-sm text-darkgray/70 mb-1">
                 {activeGoal.goal_type === 'maintenance'
@@ -398,21 +420,49 @@ export default function ProgressPage() {
                     ? 'Total Deficit Needed'
                     : 'Total Surplus Needed'}
               </p>
-              <p className="font-mono text-2xl">
+              <p className="font-mono text-xl">
                 {activeGoal.goal_type === 'maintenance'
                   ? `${activeGoal.daily_target_kcal > 0 ? '+' : ''}${activeGoal.daily_target_kcal} kcal/day`
                   : `${activeGoal.total_energy_kcal_needed?.toLocaleString() || 0} cal`}
               </p>
             </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70 mb-1">
-                {activeGoal.goal_type === 'loss' ? 'Cumulative Deficit' : activeGoal.goal_type === 'gain' ? 'Cumulative Surplus' : 'Energy Change'}
+            <div className="border-2 border-primary/20 bg-primary/5 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-pixel-sm text-darkgray/70">Apparent (Food/Gym)</p>
+                <span
+                  className="inline-flex items-center justify-center cursor-help"
+                  title="Cumulative deficit/surplus based on your daily food and gym tracking"
+                >
+                  <Info size={12} className="text-darkgray/70" />
+                </span>
+              </div>
+              <p className="font-mono text-xl">
+                {activeGoal.cumulative_apparent_deficit?.toLocaleString() || '0'} cal
               </p>
-              <p className="font-mono text-2xl">{energyChange.toLocaleString()} cal</p>
+              <p className="text-pixel-xs text-darkgray/60 mt-1">
+                {formatDeficitSurplus(activeGoal.cumulative_apparent_deficit || 0, activeGoal.goal_type)}
+              </p>
+            </div>
+            <div className="border-2 border-success/20 bg-success/5 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-pixel-sm text-darkgray/70">Actual (Weight Change)</p>
+                <span
+                  className="inline-flex items-center justify-center cursor-help"
+                  title="Cumulative deficit/surplus calculated from your actual weight change (1kg ≈ 7700 cal)"
+                >
+                  <Info size={12} className="text-darkgray/70" />
+                </span>
+              </div>
+              <p className="font-mono text-xl font-bold">
+                {activeGoal.cumulative_actual_deficit?.toLocaleString() || '0'} cal
+              </p>
+              <p className="text-pixel-xs text-darkgray/60 mt-1">
+                {formatDeficitSurplus(activeGoal.cumulative_actual_deficit || 0, activeGoal.goal_type)}
+              </p>
             </div>
           </div>
 
-          <div>
+          <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
               <p className="text-pixel-sm">Progress to Goal</p>
               <p className="text-pixel-sm font-bold">{progressPercent.toFixed(1)}%</p>
@@ -438,6 +488,63 @@ export default function ProgressPage() {
               <p className="text-pixel-sm">GOAL ACHIEVED! Congratulations!</p>
             </div>
           )}
+
+          {/* Info Section */}
+          <div className="mt-6 border-t-2 border-darkgray/20 pt-4">
+            <button
+              onClick={() => setShowProgressInfo(!showProgressInfo)}
+              className="flex items-center gap-2 text-pixel-sm text-primary hover:text-primary/80 transition-colors"
+            >
+              <Info size={16} />
+              <span className="underline">What's the difference between Apparent and Actual?</span>
+            </button>
+
+            {showProgressInfo && (
+              <div className="mt-4 p-4 bg-accent/30 border-2 border-darkgray rounded-lg">
+                <div className="space-y-3 font-mono text-sm">
+                  <div>
+                    <p className="font-bold mb-1">Apparent {getBalanceLabel()} (Food/Gym Based):</p>
+                    <p className="text-darkgray/80">
+                      This is calculated from your daily food intake and gym workouts. 
+                      It's what your tracking <em>suggests</em> should happen based on the data you log.
+                    </p>
+                    <p className="text-xs text-darkgray/60 mt-1">
+                      Formula: BMR - (Calories In - Calories Out from exercise)
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="font-bold mb-1">Actual {getBalanceLabel()} (Weight Based):</p>
+                    <p className="text-darkgray/80">
+                      This is calculated from your actual weight change. 
+                      It represents what <em>really happened</em> to your body. 
+                      We use the rule of thumb that 1 kg of body weight ≈ 7,700 calories.
+                    </p>
+                    <p className="text-xs text-darkgray/60 mt-1">
+                      Formula: (Start Weight - Current Weight) × 7,700 cal/kg
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-darkgray/20">
+                    <p className="font-bold mb-1 flex items-center gap-1">
+                      <AlertCircle size={14} />
+                      Why might they differ?
+                    </p>
+                    <ul className="text-xs text-darkgray/70 space-y-1 ml-4">
+                      <li>Inaccurate food logging (portion sizes, hidden calories)</li>
+                      <li>Water retention or loss (not fat)</li>
+                      <li>Overestimating calories burned during exercise</li>
+                      <li>Metabolic adaptation over time</li>
+                      <li>Natural weight fluctuations</li>
+                    </ul>
+                    <p className="text-xs text-darkgray/70 mt-2">
+                      Progress is based on <strong>Actual</strong> weight change since that's what truly matters!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </Card>
       )}
 
@@ -477,7 +584,7 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {!dailyEntry?.caloric_deficit && (
+      {(!dailyEntry?.apparent_deficit && dailyEntry?.apparent_deficit !== 0) && (
         <Card>
           <div className="text-center py-8">
             <TrendingDown size={48} className="mx-auto mb-4 text-darkgray/30" />

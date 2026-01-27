@@ -7,7 +7,7 @@ import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { User, Goal } from '@/types';
-import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateEnergyChange, calculateProgress, getProgressColor } from '@/lib/calculations';
+import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress, getProgressColor } from '@/lib/calculations';
 import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ProfilePage() {
@@ -48,6 +48,32 @@ export default function ProfilePage() {
         .single();
 
       if (data) {
+        // Calculate cumulative deficits from all entries since goal start
+        const { data: allEntries } = await supabase
+          .from('daily_entries')
+          .select('apparent_deficit, actual_deficit')
+          .eq('user_id', userId)
+          .gte('date', data.start_date)
+          .not('apparent_deficit', 'is', null);
+          
+        if (allEntries) {
+          const cumulativeApparent = allEntries.reduce((sum, e) => sum + (e.apparent_deficit || 0), 0);
+          const cumulativeActual = allEntries.reduce((sum, e) => sum + (e.actual_deficit || 0), 0);
+          
+          // Update goal with cumulative values
+          await supabase
+            .from('goals')
+            .update({
+              cumulative_apparent_deficit: cumulativeApparent,
+              cumulative_actual_deficit: cumulativeActual
+            })
+            .eq('id', data.id);
+            
+          // Update local state
+          data.cumulative_apparent_deficit = cumulativeApparent;
+          data.cumulative_actual_deficit = cumulativeActual;
+        }
+        
         setActiveGoal(data);
         setGoalType(data.goal_type);
         setStartWeight(data.start_weight_kg);
@@ -125,6 +151,8 @@ export default function ProfilePage() {
           daily_target_kcal: dailyTarget,
           total_energy_kcal_needed: totalEnergyNeeded,
           current_weight_kg: startWeight,
+          cumulative_apparent_deficit: 0,
+          cumulative_actual_deficit: 0,
           is_active: true,
         })
         .select()
@@ -161,13 +189,8 @@ export default function ProfilePage() {
   const totalEnergyNeeded = calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
   const dailyTarget = calculateDailyTargetKcal(goalType);
 
-  // Calculate progress
-  const energyChange = currentWeight && activeGoal 
-    ? calculateEnergyChange(activeGoal.start_weight_kg, currentWeight)
-    : 0;
-  
   const progress = activeGoal && activeGoal.total_energy_kcal_needed
-    ? calculateProgress(energyChange, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
+    ? calculateProgress(activeGoal.cumulative_actual_deficit || 0, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
     : 0;
 
   const progressPercent = Math.min(progress * 100, 100);
@@ -282,7 +305,7 @@ export default function ProfilePage() {
                   </p>
                 )}
                 <p className="font-mono text-sm">
-                  Daily Target: {dailyTarget > 0 ? '+' : ''}{dailyTarget} kcal
+                  Daily Goal: {dailyTarget} kcal {goalType === 'loss' ? 'deficit' : goalType === 'gain' ? 'surplus' : 'balance'}
                 </p>
                 {bmi !== null && (
                   <p className="font-mono text-sm mt-2">
@@ -323,7 +346,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
               <p className="text-pixel-sm text-darkgray/70">
                 {activeGoal.goal_type === 'maintenance'
@@ -340,13 +363,15 @@ export default function ProfilePage() {
               </p>
             </div>
             <div>
-              <p className="text-pixel-sm text-darkgray/70">
-                {activeGoal.goal_type === 'loss' ? 'Cumulative Deficit' : 
-                 activeGoal.goal_type === 'gain' ? 'Cumulative Surplus' : 
-                 'Energy Change'}
-              </p>
+              <p className="text-pixel-sm text-darkgray/70">Apparent (Food/Gym)</p>
               <p className="font-mono text-lg">
-                {energyChange.toLocaleString()} cal
+                {activeGoal.cumulative_apparent_deficit?.toLocaleString() || '0'} cal
+              </p>
+            </div>
+            <div>
+              <p className="text-pixel-sm text-darkgray/70">Actual (Weight Change)</p>
+              <p className="font-mono text-lg font-bold">
+                {activeGoal.cumulative_actual_deficit?.toLocaleString() || '0'} cal
               </p>
             </div>
           </div>
