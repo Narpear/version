@@ -348,7 +348,7 @@ export default function ProgressPage() {
             </Card>
             <Card style={{ backgroundColor: apparentDeficitColor }}>
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-pixel-sm text-darkgray/70">Apparent {getBalanceLabel()}</p>
+                <p className="text-pixel-sm text-darkgray/70">Daily {getBalanceLabel()}</p>
                 <span
                   className="inline-flex items-center justify-center cursor-help"
                   title="Based on your food and gym tracking"

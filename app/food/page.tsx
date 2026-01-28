@@ -50,8 +50,6 @@ export default function FoodPage() {
   const [user, setUser] = useState<User | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [templates, setTemplates] = useState<FoodTemplate[]>([]);
-  const [publicTemplates, setPublicTemplates] = useState<FoodTemplate[]>([]);
-  const [templateTab, setTemplateTab] = useState<'saved' | 'general'>('saved');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
@@ -115,23 +113,17 @@ export default function FoodPage() {
 
   const loadTemplates = async (userId: string) => {
     try {
-      // Load user's personal templates
-      const { data: userTemplates } = await supabase
+      const { data } = await supabase
         .from('food_templates')
         .select('*')
         .eq('user_id', userId)
         .order('template_name');
 
-      // Load public templates
-      const { data: publicTemplates } = await supabase
-        .from('public_food_templates')
-        .select('*')
-        .order('template_name');
-
-      if (userTemplates) setTemplates(userTemplates);
-      if (publicTemplates) setPublicTemplates(publicTemplates);
+      if (data) {
+        setTemplates(data);
+      }
     } catch (error) {
-      console.log('Error loading templates');
+      console.log('No templates found');
     }
   };
 
@@ -183,6 +175,9 @@ export default function FoodPage() {
   const handleAddFood = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || calories <= 0) return;
+    
+    // Validate quantity
+    const finalQuantity = quantity > 0 ? quantity : 1;
 
     try {
       if (editingFood) {
@@ -192,10 +187,10 @@ export default function FoodPage() {
           .update({
             meal_name: mealName,
             meal_type: mealType,
-            calories: Math.round(calories * quantity),
-            protein_g: protein * quantity,
-            carbs_g: carbs * quantity,
-            fats_g: fats * quantity,
+            calories: Math.round(calories * finalQuantity),
+            protein_g: protein * finalQuantity,
+            carbs_g: carbs * finalQuantity,
+            fats_g: fats * finalQuantity,
             is_healthy: isHealthy,
           })
           .eq('id', editingFood.id)
@@ -219,10 +214,10 @@ export default function FoodPage() {
             date: selectedDate,
             meal_name: mealName,
             meal_type: mealType,
-            calories: Math.round(calories * quantity),
-            protein_g: protein * quantity,
-            carbs_g: carbs * quantity,
-            fats_g: fats * quantity,
+            calories: Math.round(calories * finalQuantity),
+            protein_g: protein * finalQuantity,
+            carbs_g: carbs * finalQuantity,
+            fats_g: fats * finalQuantity,
             is_healthy: isHealthy,
           })
           .select()
@@ -387,28 +382,9 @@ export default function FoodPage() {
     
     // Check if any part of the search term appears in name or meal type
     return nameLower.includes(searchLower) || 
-          mealTypeLower.includes(searchLower) ||
-          template.calories.toString().includes(searchLower);
+           mealTypeLower.includes(searchLower) ||
+           template.calories.toString().includes(searchLower);
   });
-
-  // Filter public templates based on search
-  const filteredPublicTemplates = publicTemplates.filter(template => {
-    const searchLower = templateSearch.toLowerCase();
-    const nameLower = template.template_name.toLowerCase();
-    const mealTypeLower = (template.meal_type || '').toLowerCase();
-    
-    return nameLower.includes(searchLower) || 
-          mealTypeLower.includes(searchLower) ||
-          template.calories.toString().includes(searchLower);
-  });
-
-  if (loading) {
-    return (
-      <div className="container-pixel">
-        <p className="font-mono text-lg">Loading...</p>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -611,8 +587,18 @@ export default function FoodPage() {
             <Input
               type="number"
               label="Quantity/Servings"
-              value={quantity}
-              onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
+              value={quantity === 0 ? '' : quantity}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || val === '.') {
+                  setQuantity(0);
+                } else {
+                  const parsed = parseFloat(val);
+                  if (!isNaN(parsed)) {
+                    setQuantity(parsed);
+                  }
+                }
+              }}
               placeholder="1"
               step={0.1}
               min={0.1}
@@ -649,8 +635,8 @@ export default function FoodPage() {
             />
           </div>
 
-          {/* Show calculated totals if quantity > 1 */}
-          {quantity > 1 && (
+          {/* Show calculated totals if quantity != 1 */}
+          {quantity !== 1 && quantity > 0 && (
             <div className="mt-4 p-3 border-2 border-darkgray bg-accent/20">
               <p className="font-mono text-sm font-bold mb-2">Total for {quantity} serving(s):</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
@@ -696,30 +682,6 @@ export default function FoodPage() {
 
       {/* Templates Modal */}
       <Modal isOpen={showTemplatesModal} onClose={() => { setShowTemplatesModal(false); setTemplateSearch(''); }} title="Food Templates">
-        {/* Tab Switcher */}
-        <div className="flex gap-2 mb-4 border-b-2 border-darkgray">
-          <button
-            onClick={() => setTemplateTab('saved')}
-            className={`px-4 py-2 font-mono transition-all ${
-              templateTab === 'saved' 
-                ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' 
-                : 'bg-white hover:bg-accent/30'
-            }`}
-          >
-            My Foods ({templates.length})
-          </button>
-          <button
-            onClick={() => setTemplateTab('general')}
-            className={`px-4 py-2 font-mono transition-all ${
-              templateTab === 'general' 
-                ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' 
-                : 'bg-white hover:bg-accent/30'
-            }`}
-          >
-            General ({publicTemplates.length})
-          </button>
-        </div>
-
         {/* Search Bar */}
         <div className="mb-4">
           <div className="relative">
@@ -734,89 +696,54 @@ export default function FoodPage() {
           </div>
         </div>
 
-        {/* Display templates based on active tab */}
-        {templateTab === 'saved' ? (
-          // User's saved templates
-          filteredTemplates.length === 0 ? (
-            <p className="font-mono text-sm text-darkgray/70 text-center py-4">
-              {templateSearch ? 'No templates found matching your search' : 'No templates saved yet. Add food and click "Save as Template"'}
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {filteredTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="p-4 border-2 border-darkgray bg-accent/20 hover:bg-accent/30 transition-all"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div 
-                      className="flex-1 cursor-pointer" 
-                      onClick={() => handleUseTemplate(template)}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-mono text-base font-bold">{template.template_name}</p>
-                        {template.is_healthy && <span className="text-xs">✓</span>}
-                      </div>
-                      <p className="text-pixel-xs text-darkgray/70 mb-1">
-                        {template.meal_type && `${template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}`}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-                        <p>{template.calories} cal</p>
-                        {template.protein_g > 0 && <p>{template.protein_g}g protein</p>}
-                        {template.carbs_g > 0 && <p>{template.carbs_g}g carbs</p>}
-                        {template.fats_g > 0 && <p>{template.fats_g}g fats</p>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditTemplate(template)}
-                        className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
+        {filteredTemplates.length === 0 ? (
+          <p className="font-mono text-sm text-darkgray/70 text-center py-4">
+            {templateSearch ? 'No templates found matching your search' : 'No templates saved yet. Add food and click "Save as Template"'}
+          </p>
         ) : (
-          // Public/General templates
-          filteredPublicTemplates.length === 0 ? (
-            <p className="font-mono text-sm text-darkgray/70 text-center py-4">
-              No general templates found matching your search
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {filteredPublicTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="p-4 border-2 border-darkgray bg-success/20 hover:bg-success/30 transition-all cursor-pointer"
-                  onClick={() => handleUseTemplate(template)}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-mono text-base font-bold">{template.template_name}</p>
-                    {template.is_healthy && <span className="text-xs">✓</span>}
+          <div className="grid grid-cols-1 gap-3">
+            {filteredTemplates.map((template) => (
+              <div
+                key={template.id}
+                className="p-4 border-2 border-darkgray bg-accent/20 hover:bg-accent/30 transition-all"
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <div 
+                    className="flex-1 cursor-pointer" 
+                    onClick={() => handleUseTemplate(template)}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-mono text-base font-bold">{template.template_name}</p>
+                      {template.is_healthy && <span className="text-xs">✓</span>}
+                    </div>
+                    <p className="text-pixel-xs text-darkgray/70 mb-1">
+                      {template.meal_type && `${template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}`}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                      <p>{template.calories} cal</p>
+                      {template.protein_g > 0 && <p>{template.protein_g}g protein</p>}
+                      {template.carbs_g > 0 && <p>{template.carbs_g}g carbs</p>}
+                      {template.fats_g > 0 && <p>{template.fats_g}g fats</p>}
+                    </div>
                   </div>
-                  <p className="text-pixel-xs text-darkgray/70 mb-1">
-                    {template.meal_type && `${template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}`}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 font-mono text-xs">
-                    <p>{template.calories} cal</p>
-                    {template.protein_g > 0 && <p>{template.protein_g}g protein</p>}
-                    {template.carbs_g > 0 && <p>{template.carbs_g}g carbs</p>}
-                    {template.fats_g > 0 && <p>{template.fats_g}g fats</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEditTemplate(template)}
+                      className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTemplate(template.id)}
+                      className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )
+              </div>
+            ))}
+          </div>
         )}
       </Modal>
     </div>
