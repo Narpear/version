@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
-import { Droplet, TrendingUp, Sparkles, Info, Brain, Zap, Heart, Target, Activity, Smile } from 'lucide-react';
+import { Droplet, TrendingUp, Sparkles, Info, Brain, Zap, Heart, Target, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
 interface DailyWater {
@@ -23,7 +23,11 @@ export default function WaterPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Date state
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
   const today = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === today;
   const maxGlasses = 8;
 
   const hydrationFacts = [
@@ -74,21 +78,23 @@ export default function WaterPage() {
     
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
-    loadWaterData(parsedUser.id);
-  }, [router]);
+    loadWaterData(parsedUser.id, selectedDate);
+  }, [router, selectedDate]);
 
-  const loadWaterData = async (userId: string) => {
+  const loadWaterData = async (userId: string, date: string) => {
     try {
-      // Get today's water
-      const { data: todayData } = await supabase
+      // Get selected date's water
+      const { data: dateData } = await supabase
         .from('daily_entries')
         .select('water_glasses')
         .eq('user_id', userId)
-        .eq('date', today)
+        .eq('date', date)
         .single();
 
-      if (todayData) {
-        setGlasses(todayData.water_glasses || 0);
+      if (dateData) {
+        setGlasses(dateData.water_glasses || 0);
+      } else {
+        setGlasses(0);
       }
 
       // Get last 7 days for the chart
@@ -135,7 +141,7 @@ export default function WaterPage() {
         .from('daily_entries')
         .select('id')
         .eq('user_id', user.id)
-        .eq('date', today)
+        .eq('date', selectedDate)
         .single();
 
       if (existing) {
@@ -148,7 +154,7 @@ export default function WaterPage() {
           .from('daily_entries')
           .insert({
             user_id: user.id,
-            date: today,
+            date: selectedDate,
             water_glasses: newGlasses,
             total_calories_in: 0,
             total_calories_out: 0,
@@ -156,9 +162,9 @@ export default function WaterPage() {
       }
 
       setGlasses(newGlasses);
-      // Update weekly data
+      // Update weekly data if it's in the chart
       setWeeklyData(prev => 
-        prev.map(d => d.date === today ? { ...d, water_glasses: newGlasses } : d)
+        prev.map(d => d.date === selectedDate ? { ...d, water_glasses: newGlasses } : d)
       );
       toast('Saved!');
     } catch (error) {
@@ -181,6 +187,12 @@ export default function WaterPage() {
     }
   };
 
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate.toISOString().split('T')[0]);
+  };
+
   if (loading) {
     return (
       <div className="container-pixel">
@@ -197,11 +209,39 @@ export default function WaterPage() {
 
   return (
     <div className="container-pixel">
-      <h1 className="heading-pixel">Water Tracker</h1>
+      {/* Date Navigation */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="heading-pixel">Water Tracker</h1>
+        <div className="flex items-center gap-4">
+          <button onClick={() => changeDate(-1)} className="p-2 border-2 border-darkgray bg-white hover:bg-lavender">
+            <ChevronLeft size={24} />
+          </button>
+          <div className="text-center">
+            <p className="font-mono text-lg">
+              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={today}
+              className="text-pixel-xs border-2 border-darkgray p-1 mt-1"
+            />
+          </div>
+          <button 
+            onClick={() => changeDate(1)} 
+            disabled={isToday}
+            className={`p-2 border-2 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
+      </div>
+
       <p className="font-mono text-lg mb-6">Goal: 8 glasses (2L) per day · Stay hydrated, stay healthy</p>
 
       {/* Main Tracker Card */}
-      <Card title="Today's Intake" className="mb-6">
+      <Card title={`${isToday ? 'Today\'s' : 'Day\'s'} Intake`} className="mb-6">
         {/* Water Drops in a Row - Smaller and Cuter */}
         <div className="mb-8">
           <div className="flex justify-center items-center gap-2 flex-wrap">
@@ -276,7 +316,7 @@ export default function WaterPage() {
 
       {/* Stats Row - More rectangular and compact */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card title="Today's Progress">
+        <Card title={`${isToday ? 'Today\'s' : 'Day\'s'} Progress`}>
           <div className="text-center py-2">
             <p className="text-4xl font-bold font-mono" style={{ color: isComplete ? '#C1FBA4' : '#B5DEFF' }}>
               {glasses}
@@ -317,7 +357,7 @@ export default function WaterPage() {
         <div className="flex items-end justify-between gap-2 h-48 mb-4">
           {weeklyData.map((day) => {
             const dayHeight = (day.water_glasses / maxGlasses) * 100;
-            const isToday = day.date === today;
+            const isDayToday = day.date === today;
             const date = new Date(day.date);
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
 
@@ -330,7 +370,7 @@ export default function WaterPage() {
                   className="w-full border-2 border-darkgray relative transition-all hover:opacity-80"
                   style={{ 
                     height: `${Math.max(dayHeight, 10)}%`,
-                    backgroundColor: isToday ? '#FFB5E8' : day.water_glasses >= maxGlasses ? '#C1FBA4' : '#B5DEFF'
+                    backgroundColor: isDayToday ? '#FFB5E8' : day.water_glasses >= maxGlasses ? '#C1FBA4' : '#B5DEFF'
                   }}
                 >
                   {day.water_glasses > 0 && (
@@ -339,7 +379,7 @@ export default function WaterPage() {
                     </div>
                   )}
                 </div>
-                <p className={`text-pixel-xs ${isToday ? 'font-bold' : 'text-darkgray/70'}`}>
+                <p className={`text-pixel-xs ${isDayToday ? 'font-bold' : 'text-darkgray/70'}`}>
                   {dayName}
                 </p>
               </div>

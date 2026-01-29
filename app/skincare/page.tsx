@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { User, SkincareLog } from '@/types';
-import { Sparkles, TrendingUp, CheckCircle2, Sun, Moon, Dumbbell, Info, Smile } from 'lucide-react';
+import { Sparkles, TrendingUp, CheckCircle2, Sun, Moon, Dumbbell, Info, Smile, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
 interface DailySkincare {
@@ -21,7 +21,11 @@ export default function SkincarePage() {
   const [weeklyData, setWeeklyData] = useState<DailySkincare[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Date state
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
   const today = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === today;
 
   const routines = [
     { 
@@ -94,20 +98,22 @@ export default function SkincarePage() {
     
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
-    loadSkincareData(parsedUser.id);
-  }, [router]);
+    loadSkincareData(parsedUser.id, selectedDate);
+  }, [router, selectedDate]);
 
-  const loadSkincareData = async (userId: string) => {
+  const loadSkincareData = async (userId: string, date: string) => {
     try {
-      // Get today's logs
+      // Get selected date's logs
       const { data, error } = await supabase
         .from('skincare_logs')
         .select('*')
         .eq('user_id', userId)
-        .eq('date', today);
+        .eq('date', date);
 
       if (data) {
         setLogs(data);
+      } else {
+        setLogs([]);
       }
 
       // Get last 7 days for chart
@@ -183,7 +189,7 @@ export default function SkincarePage() {
       } else {
         const newLog = {
           user_id: user.id,
-          date: today,
+          date: selectedDate,
           time_of_day: timeOfDay,
           cleansing_done: stepKey === 'cleansing_done',
           serum_done: stepKey === 'serum_done',
@@ -232,7 +238,7 @@ export default function SkincarePage() {
       } else {
         const newLog = {
           user_id: user.id,
-          date: today,
+          date: selectedDate,
           time_of_day: 'bedtime',
           cleansing_done: false,
           serum_done: false,
@@ -248,6 +254,12 @@ export default function SkincarePage() {
       console.error('Error updating gua sha:', error);
       alert('Failed to update gua sha');
     }
+  };
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate.toISOString().split('T')[0]);
   };
 
   if (loading) {
@@ -276,32 +288,62 @@ export default function SkincarePage() {
 
   return (
     <div className="container-pixel">
-      <h1 className="heading-pixel">Skincare Tracker</h1>
-      <p className="font-mono text-lg mb-6">Consistency is key for healthy, glowing skin</p>
-
-      {/* Gua Sha Card */}
-      <Card title="Gua Sha (Daily Practice)" className="mb-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-mono text-lg mb-1">
-              Status: <span className={`font-bold ${guaShaToday ? 'text-success' : 'text-darkgray'}`}>
-                {guaShaToday ? '✓ Done' : 'Not done'}
-              </span>
+      {/* Date Navigation */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="heading-pixel">Skincare Tracker</h1>
+        <div className="flex items-center gap-4">
+          <button onClick={() => changeDate(-1)} className="p-2 border-2 border-darkgray bg-white hover:bg-lavender">
+            <ChevronLeft size={24} />
+          </button>
+          <div className="text-center">
+            <p className="font-mono text-lg">
+              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
-            <p className="font-mono text-sm text-darkgray/70">Do it once anytime - morning or evening</p>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={today}
+              className="text-pixel-xs border-2 border-darkgray p-1 mt-1"
+            />
           </div>
-          <button
-            onClick={toggleGuaSha}
-            className={`px-6 py-3 border-2 font-mono text-lg transition-all ${
-              guaShaToday 
-                ? 'bg-success border-success text-darkgray font-bold' 
-                : 'bg-white border-darkgray hover:bg-lavender'
-            }`}
+          <button 
+            onClick={() => changeDate(1)} 
+            disabled={isToday}
+            className={`p-2 border-2 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
           >
-            {guaShaToday ? 'Undo' : 'Mark Done'}
+            <ChevronRight size={24} />
           </button>
         </div>
-      </Card>
+      </div>
+
+      <p className="font-mono text-lg mb-6">Consistency is key for healthy, glowing skin</p>
+
+      {/* Gua Sha Card - Only show for today */}
+      {isToday && (
+        <Card title="Gua Sha (Daily Practice)" className="mb-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-lg mb-1">
+                Status: <span className={`font-bold ${guaShaToday ? 'text-success' : 'text-darkgray'}`}>
+                  {guaShaToday ? '✓ Done' : 'Not done'}
+                </span>
+              </p>
+              <p className="font-mono text-sm text-darkgray/70">Do it once anytime - morning or evening</p>
+            </div>
+            <button
+              onClick={toggleGuaSha}
+              className={`px-6 py-3 border-2 font-mono text-lg transition-all ${
+                guaShaToday 
+                  ? 'bg-success border-success text-darkgray font-bold' 
+                  : 'bg-white border-darkgray hover:bg-lavender'
+              }`}
+            >
+              {guaShaToday ? 'Undo' : 'Mark Done'}
+            </button>
+          </div>
+        </Card>
+      )}
 
       {/* Routine Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -395,7 +437,7 @@ export default function SkincarePage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card title="Today's Progress">
+        <Card title={`${isToday ? 'Today\'s' : 'Day\'s'} Progress`}>
           <div className="text-center py-2">
             <p className="text-4xl font-bold font-mono text-primary">
               {completedRoutines}
@@ -434,7 +476,7 @@ export default function SkincarePage() {
         <div className="flex items-end justify-between gap-2 h-40 mb-4">
           {weeklyData.map((day) => {
             const dayHeight = (day.completed_routines / routines.length) * 100;
-            const isToday = day.date === today;
+            const isDayToday = day.date === today;
             const date = new Date(day.date);
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
             const allComplete = day.completed_routines === routines.length;
@@ -448,7 +490,7 @@ export default function SkincarePage() {
                   className="w-full border-2 border-darkgray relative transition-all hover:opacity-80"
                   style={{ 
                     height: `${Math.max(dayHeight, 10)}%`,
-                    backgroundColor: isToday ? '#FFB5E8' : allComplete ? '#C1FBA4' : '#B5DEFF'
+                    backgroundColor: isDayToday ? '#FFB5E8' : allComplete ? '#C1FBA4' : '#B5DEFF'
                   }}
                 >
                   {day.completed_routines > 0 && (
@@ -457,7 +499,7 @@ export default function SkincarePage() {
                     </div>
                   )}
                 </div>
-                <p className={`text-pixel-xs ${isToday ? 'font-bold' : 'text-darkgray/70'}`}>
+                <p className={`text-pixel-xs ${isDayToday ? 'font-bold' : 'text-darkgray/70'}`}>
                   {dayName}
                 </p>
               </div>

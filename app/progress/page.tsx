@@ -19,7 +19,7 @@ import {
   getApparentDeficitMessage,
   formatDeficitSurplus,
 } from '@/lib/calculations';
-import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle } from 'lucide-react';
+import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ProgressPage() {
@@ -33,9 +33,13 @@ export default function ProgressPage() {
   const [calculating, setCalculating] = useState(false);
   const [showProgressInfo, setShowProgressInfo] = useState(false);
 
-  const [todayWeight, setTodayWeight] = useState(0);
+  const [selectedWeight, setSelectedWeight] = useState(0);
+
+  // Date state
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   const today = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === today;
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -46,10 +50,10 @@ export default function ProgressPage() {
 
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
-    loadData(parsedUser.id);
-  }, [router]);
+    loadData(parsedUser.id, selectedDate);
+  }, [router, selectedDate]);
 
-  const loadData = async (userId: string) => {
+  const loadData = async (userId: string, date: string) => {
     try {
       // Load active goal
       const { data: goalData } = await supabase
@@ -89,19 +93,24 @@ export default function ProgressPage() {
         setActiveGoal(goalData);
       }
 
-      // Load today's daily entry
+      // Load selected date's daily entry
       const { data: entryData } = await supabase
         .from('daily_entries')
         .select('*')
         .eq('user_id', userId)
-        .eq('date', today)
+        .eq('date', date)
         .single();
 
       if (entryData) {
         setDailyEntry(entryData);
         if (entryData.weight_kg) {
-          setTodayWeight(entryData.weight_kg);
+          setSelectedWeight(entryData.weight_kg);
+        } else {
+          setSelectedWeight(0);
         }
+      } else {
+        setDailyEntry(null);
+        setSelectedWeight(0);
       }
 
       // Load weight history (last 30 days)
@@ -132,8 +141,8 @@ export default function ProgressPage() {
   };
 
   const handleCalculate = async () => {
-    if (!user || todayWeight <= 0) {
-      toast('Please enter your weight for today');
+    if (!user || selectedWeight <= 0) {
+      toast('Please enter your weight');
       return;
     }
 
@@ -144,22 +153,22 @@ export default function ProgressPage() {
         .from('daily_entries')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', today)
+        .eq('date', selectedDate)
         .single();
 
       const caloriesIn = entryData?.total_calories_in || 0;
       const caloriesOut = entryData?.total_calories_out || 0;
 
-      const bmr = calculateBMR(todayWeight, user.height_cm, user.age, user.gender);
+      const bmr = calculateBMR(selectedWeight, user.height_cm, user.age, user.gender);
       const netIntake = calculateNetIntake(caloriesIn, caloriesOut);
       const apparentDeficit = calculateApparentDeficit(bmr, netIntake);
 
       // Calculate actual deficit if we have both start weight and current weight
       let actualDeficit = 0;
-      if (activeGoal && activeGoal.start_weight_kg && todayWeight) {
+      if (activeGoal && activeGoal.start_weight_kg && selectedWeight) {
         actualDeficit = calculateActualDeficit(
           activeGoal.start_weight_kg,
-          todayWeight,
+          selectedWeight,
           activeGoal.goal_type
         );
       }
@@ -168,7 +177,7 @@ export default function ProgressPage() {
         await supabase
           .from('daily_entries')
           .update({
-            weight_kg: todayWeight,
+            weight_kg: selectedWeight,
             bmr: bmr,
             net_intake: netIntake,
             apparent_deficit: apparentDeficit,
@@ -178,8 +187,8 @@ export default function ProgressPage() {
       } else {
         await supabase.from('daily_entries').insert({
           user_id: user.id,
-          date: today,
-          weight_kg: todayWeight,
+          date: selectedDate,
+          weight_kg: selectedWeight,
           bmr: bmr,
           total_calories_in: caloriesIn,
           total_calories_out: caloriesOut,
@@ -190,11 +199,11 @@ export default function ProgressPage() {
         });
       }
 
-      if (activeGoal) {
-        await supabase.from('goals').update({ current_weight_kg: todayWeight }).eq('id', activeGoal.id);
+      if (activeGoal && isToday) {
+        await supabase.from('goals').update({ current_weight_kg: selectedWeight }).eq('id', activeGoal.id);
       }
 
-      await loadData(user.id);
+      await loadData(user.id, selectedDate);
       toast('Saved!');
     } catch (error) {
       console.error('Error calculating:', error);
@@ -202,6 +211,12 @@ export default function ProgressPage() {
     } finally {
       setCalculating(false);
     }
+  };
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate.toISOString().split('T')[0]);
   };
 
   if (loading) {
@@ -282,24 +297,52 @@ export default function ProgressPage() {
 
   return (
     <div className="container-pixel">
-      <h1 className="heading-pixel">{getPageTitle()}</h1>
+      {/* Date Navigation */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="heading-pixel">{getPageTitle()}</h1>
+        <div className="flex items-center gap-4">
+          <button onClick={() => changeDate(-1)} className="p-2 border-2 border-darkgray bg-white hover:bg-lavender">
+            <ChevronLeft size={24} />
+          </button>
+          <div className="text-center">
+            <p className="font-mono text-lg">
+              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={today}
+              className="text-pixel-xs border-2 border-darkgray p-1 mt-1"
+            />
+          </div>
+          <button 
+            onClick={() => changeDate(1)} 
+            disabled={isToday}
+            className={`p-2 border-2 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
+          >
+            <ChevronRight size={24} />
+          </button>
+        </div>
+      </div>
+
       <p className="font-mono text-lg mb-2">Track your daily {getBalanceLabel().toLowerCase()} and progress</p>
       <p className="text-pixel-xs text-darkgray/60 mb-6">Autosaved to your account.</p>
 
       {/* Weight Input & Calculate Button */}
-      <Card title="Today's Weight & Calculation" className="mb-6">
+      <Card title={`${isToday ? 'Today\'s' : 'Day\'s'} Weight & Calculation`} className="mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             type="number"
-            label="Weight Today (kg)"
-            value={todayWeight}
-            onChange={(e) => setTodayWeight(parseFloat(e.target.value))}
+            label={`Weight for ${isToday ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (kg)`}
+            value={selectedWeight}
+            onChange={(e) => setSelectedWeight(parseFloat(e.target.value))}
             placeholder="Enter your weight"
             step={0.1}
             min={0}
           />
           <div className="flex items-end gap-4 mt-7">
-            <Button onClick={handleCalculate} disabled={calculating || todayWeight <= 0} className="flex-1">
+            <Button onClick={handleCalculate} disabled={calculating || selectedWeight <= 0} className="flex-1">
               {calculating ? 'Calculating...' : dailyEntry?.apparent_deficit !== undefined && dailyEntry?.apparent_deficit !== null ? 'Recalculate' : `Calculate ${getBalanceLabel()}`}
             </Button>
             {dailyEntry?.apparent_deficit !== undefined && dailyEntry?.apparent_deficit !== null && (
@@ -310,11 +353,11 @@ export default function ProgressPage() {
           </div>
         </div>
         <p className="font-mono text-sm text-darkgray/70 mt-4">
-          Enter your weight and click Calculate to compute today's {getBalanceLabel().toLowerCase()}. Click Recalculate if you update food or gym data.
+          Enter your weight and click Calculate to compute {isToday ? 'today\'s' : 'the'} {getBalanceLabel().toLowerCase()}. Click Recalculate if you update food or gym data.
         </p>
       </Card>
 
-      {/* Today's Stats */}
+      {/* Day's Stats */}
       {dailyEntry && dailyEntry.apparent_deficit !== null && dailyEntry.apparent_deficit !== undefined && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
@@ -364,7 +407,7 @@ export default function ProgressPage() {
           <Card title="How It's Calculated (Resting BMR)" className="mb-6">
             <div className="font-mono text-sm space-y-2">
               <p>
-                BMR (Mifflin-St Jeor): (10 × {todayWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
+                BMR (Mifflin-St Jeor): (10 × {selectedWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
                 <strong>{bmr} cal</strong>
               </p>
               <p>
@@ -531,11 +574,11 @@ export default function ProgressPage() {
                       Why might they differ?
                     </p>
                     <ul className="text-xs text-darkgray/70 space-y-1 ml-4">
-                      <li>Inaccurate food logging (portion sizes, hidden calories)</li>
-                      <li>Water retention or loss (not fat)</li>
-                      <li>Overestimating calories burned during exercise</li>
-                      <li>Metabolic adaptation over time</li>
-                      <li>Natural weight fluctuations</li>
+                      <li>• Inaccurate food logging (portion sizes, hidden calories)</li>
+                      <li>• Water retention or loss (not fat)</li>
+                      <li>• Overestimating calories burned during exercise</li>
+                      <li>• Metabolic adaptation over time</li>
+                      <li>• Natural weight fluctuations</li>
                     </ul>
                     <p className="text-xs text-darkgray/70 mt-2">
                       Progress is based on <strong>Actual</strong> weight change since that's what truly matters!
@@ -588,7 +631,7 @@ export default function ProgressPage() {
         <Card>
           <div className="text-center py-8">
             <TrendingDown size={48} className="mx-auto mb-4 text-darkgray/30" />
-            <p className="font-mono text-lg text-darkgray/70 mb-2">Nothing calculated today</p>
+            <p className="font-mono text-lg text-darkgray/70 mb-2">Nothing calculated for this day</p>
             <p className="font-mono text-sm text-darkgray/50">
               1. Log your food in Food Tracker
               <br />
