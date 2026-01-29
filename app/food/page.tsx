@@ -439,20 +439,42 @@ export default function FoodPage() {
         const product = data.product;
         const nutriments = product.nutriments;
 
-        const caloriesPer100g = nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0;
-        const proteinPer100g = nutriments.proteins_100g || nutriments.proteins || 0;
-        const carbsPer100g = nutriments.carbohydrates_100g || nutriments.carbohydrates || 0;
-        const fatsPer100g = nutriments.fat_100g || nutriments.fat || 0;
+        // Try to get serving size
+        const servingSize = product.serving_quantity || 100; // Default to 100g if no serving size
+        const servingSizeUnit = product.serving_quantity_unit || 'g';
+        
+        // Prefer per-serving data if available, otherwise use per-100g
+        let calories, protein, carbs, fats;
+        
+        if (nutriments['energy-kcal_serving']) {
+          // Per-serving data is available
+          calories = Math.round(nutriments['energy-kcal_serving'] || 0);
+          protein = parseFloat((nutriments.proteins_serving || 0).toFixed(1));
+          carbs = parseFloat((nutriments.carbohydrates_serving || 0).toFixed(1));
+          fats = parseFloat((nutriments.fat_serving || 0).toFixed(1));
+        } else {
+          // Fall back to per-100g data
+          calories = Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0);
+          protein = parseFloat((nutriments.proteins_100g || nutriments.proteins || 0).toFixed(1));
+          carbs = parseFloat((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0).toFixed(1));
+          fats = parseFloat((nutriments.fat_100g || nutriments.fat || 0).toFixed(1));
+        }
 
+        // Auto-fill the form
         setMealName(product.product_name || 'Unknown Product');
-        setCalories(Math.round(caloriesPer100g));
-        setProtein(parseFloat(proteinPer100g.toFixed(1)));
-        setCarbs(parseFloat(carbsPer100g.toFixed(1)));
-        setFats(parseFloat(fatsPer100g.toFixed(1)));
-        setQuantity(1);
+        setCalories(calories);
+        setProtein(protein);
+        setCarbs(carbs);
+        setFats(fats);
+        setQuantity(1); // Default to 1 serving
         setShowAddModal(true);
 
-        toast('Product found! Review and adjust serving size.');
+        // Show helpful message with serving size info
+        const servingInfo = nutriments['energy-kcal_serving'] 
+          ? `per serving (${servingSize}${servingSizeUnit})`
+          : `per 100g`;
+        
+        toast(`Product found! Values are ${servingInfo}. Adjust quantity as needed.`);
       } else {
         alert('Product not found in database. Please enter manually.');
       }
