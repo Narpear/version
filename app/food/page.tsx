@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { User, FoodLog, FoodTemplate } from '@/types';
 import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
+import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
@@ -101,10 +102,8 @@ export default function FoodPage() {
 
       if (data) {
         setFoodLogs(data);
-        // Update daily totals only if it's today
-        if (date === today) {
-          await updateDailyTotals(userId, data);
-        }
+        // Always update daily totals when data changes, regardless of date
+        await updateDailyTotals(userId, data);
       }
     } catch (error) {
       console.log('No food logs for this date');
@@ -141,16 +140,29 @@ export default function FoodPage() {
     try {
       const { data: existing } = await supabase
         .from('daily_entries')
-        .select('id')
+        .select('*')
         .eq('user_id', userId)
         .eq('date', selectedDate)
         .single();
 
       if (existing) {
+        // Recalculate apparent deficit with new food data
+        const bmr = existing.bmr || 0;
+        const caloriesOut = existing.total_calories_out || 0;
+        const netIntake = totalCaloriesIn - caloriesOut;
+        const apparentDeficit = bmr > 0 ? bmr - netIntake : null;
+        
         await supabase
           .from('daily_entries')
-          .update({ total_calories_in: totalCaloriesIn })
+          .update({ 
+            total_calories_in: totalCaloriesIn,
+            net_intake: netIntake,
+            apparent_deficit: apparentDeficit
+          })
           .eq('id', existing.id);
+          
+        // Recalculate cumulative deficits for the goal
+        await recalculateGoalCumulatives(userId);
       } else {
         await supabase
           .from('daily_entries')
@@ -209,9 +221,7 @@ export default function FoodPage() {
 
         const updatedLogs = foodLogs.map(log => log.id === editingFood.id ? data : log);
         setFoodLogs(updatedLogs);
-        if (isToday) {
-          await updateDailyTotals(user.id, updatedLogs);
-        }
+        await updateDailyTotals(user.id, updatedLogs);
         toast('Updated!');
       } else {
         // Create new food log
@@ -235,9 +245,7 @@ export default function FoodPage() {
 
         const updatedLogs = [...foodLogs, data];
         setFoodLogs(updatedLogs);
-        if (isToday) {
-          await updateDailyTotals(user.id, updatedLogs);
-        }
+        await updateDailyTotals(user.id, updatedLogs);
         toast('Saved!');
       }
       
@@ -366,9 +374,7 @@ export default function FoodPage() {
 
       const updatedLogs = foodLogs.filter(log => log.id !== id);
       setFoodLogs(updatedLogs);
-      if (isToday) {
-        await updateDailyTotals(user.id, updatedLogs);
-      }
+      await updateDailyTotals(user.id, updatedLogs);
       toast('Food deleted');
     } catch (error) {
       console.error('Error deleting food:', error);

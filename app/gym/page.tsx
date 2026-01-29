@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { User, GymLog, WorkoutTemplate } from '@/types';
 import { Dumbbell, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
+import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
@@ -99,10 +100,8 @@ export default function GymPage() {
 
       if (data) {
         setGymLogs(data);
-        // Update daily totals only if it's today
-        if (date === today) {
-          await updateDailyTotals(userId, data);
-        }
+        // Always update daily totals when data changes, regardless of date
+        await updateDailyTotals(userId, data);
       }
     } catch (error) {
       console.log('No gym logs for this date');
@@ -133,16 +132,29 @@ export default function GymPage() {
     try {
       const { data: existing } = await supabase
         .from('daily_entries')
-        .select('id')
+        .select('*')
         .eq('user_id', userId)
         .eq('date', selectedDate)
         .single();
 
       if (existing) {
+        // Recalculate apparent deficit with new gym data
+        const bmr = existing.bmr || 0;
+        const caloriesIn = existing.total_calories_in || 0;
+        const netIntake = caloriesIn - totalCaloriesOut;
+        const apparentDeficit = bmr > 0 ? bmr - netIntake : null;
+        
         await supabase
           .from('daily_entries')
-          .update({ total_calories_out: totalCaloriesOut })
+          .update({ 
+            total_calories_out: totalCaloriesOut,
+            net_intake: netIntake,
+            apparent_deficit: apparentDeficit
+          })
           .eq('id', existing.id);
+          
+        // Recalculate cumulative deficits for the goal
+        await recalculateGoalCumulatives(userId);
       } else {
         await supabase
           .from('daily_entries')
@@ -194,9 +206,7 @@ export default function GymPage() {
 
         const updatedLogs = gymLogs.map(log => log.id === editingWorkout.id ? data : log);
         setGymLogs(updatedLogs);
-        if (isToday) {
-          await updateDailyTotals(user.id, updatedLogs);
-        }
+        await updateDailyTotals(user.id, updatedLogs);
         toast('Updated!');
       } else {
         // Create new workout
@@ -222,9 +232,7 @@ export default function GymPage() {
 
         const updatedLogs = [...gymLogs, data];
         setGymLogs(updatedLogs);
-        if (isToday) {
-          await updateDailyTotals(user.id, updatedLogs);
-        }
+        await updateDailyTotals(user.id, updatedLogs);
         toast('Saved!');
       }
       
@@ -316,9 +324,7 @@ export default function GymPage() {
 
       const updatedLogs = gymLogs.filter(log => log.id !== id);
       setGymLogs(updatedLogs);
-      if (isToday) {
-        await updateDailyTotals(user.id, updatedLogs);
-      }
+      await updateDailyTotals(user.id, updatedLogs);
       toast('Workout deleted');
     } catch (error) {
       console.error('Error deleting workout:', error);

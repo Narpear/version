@@ -163,16 +163,7 @@ export default function ProgressPage() {
       const netIntake = calculateNetIntake(caloriesIn, caloriesOut);
       const apparentDeficit = calculateApparentDeficit(bmr, netIntake);
 
-      // Calculate actual deficit if we have both start weight and current weight
-      let actualDeficit = 0;
-      if (activeGoal && activeGoal.start_weight_kg && selectedWeight) {
-        actualDeficit = calculateActualDeficit(
-          activeGoal.start_weight_kg,
-          selectedWeight,
-          activeGoal.goal_type
-        );
-      }
-
+      // Save/update daily entry with weight and apparent deficit
       if (entryData) {
         await supabase
           .from('daily_entries')
@@ -181,7 +172,6 @@ export default function ProgressPage() {
             bmr: bmr,
             net_intake: netIntake,
             apparent_deficit: apparentDeficit,
-            actual_deficit: actualDeficit,
           })
           .eq('id', entryData.id);
       } else {
@@ -194,13 +184,45 @@ export default function ProgressPage() {
           total_calories_out: caloriesOut,
           net_intake: netIntake,
           apparent_deficit: apparentDeficit,
-          actual_deficit: actualDeficit,
           water_glasses: 0,
         });
       }
 
-      if (activeGoal && isToday) {
-        await supabase.from('goals').update({ current_weight_kg: selectedWeight }).eq('id', activeGoal.id);
+      // Recalculate cumulative deficits for the goal
+      if (activeGoal) {
+        // Sum all apparent deficits since goal start up to selected date
+        const { data: allEntries } = await supabase
+          .from('daily_entries')
+          .select('apparent_deficit, weight_kg, date')
+          .eq('user_id', user.id)
+          .gte('date', activeGoal.start_date)
+          .lte('date', selectedDate)
+          .not('apparent_deficit', 'is', null)
+          .order('date', { ascending: false });
+        
+        if (allEntries) {
+          const cumulativeApparent = allEntries.reduce((sum, e) => sum + (e.apparent_deficit || 0), 0);
+          
+          // Get most recent weight (could be from selected date or earlier)
+          const latestWeight = allEntries.find(e => e.weight_kg)?.weight_kg || activeGoal.start_weight_kg;
+          
+          // Calculate actual deficit from weight change
+          const cumulativeActual = calculateActualDeficit(
+            activeGoal.start_weight_kg,
+            parseFloat(latestWeight),
+            activeGoal.goal_type
+          );
+          
+          // Update goal with cumulative values
+          await supabase
+            .from('goals')
+            .update({
+              cumulative_apparent_deficit: cumulativeApparent,
+              cumulative_actual_deficit: cumulativeActual,
+              current_weight_kg: latestWeight
+            })
+            .eq('id', activeGoal.id);
+        }
       }
 
       await loadData(user.id, selectedDate);
