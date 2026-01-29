@@ -7,9 +7,15 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, FoodLog, FoodTemplate } from '@/types';
-import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit } from 'lucide-react';
+import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit, Camera } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
+import dynamic from 'next/dynamic';
+
+// Dynamically import BarcodeScanner (client-side only)
+const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
+  ssr: false,
+});
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
@@ -58,6 +64,8 @@ export default function FoodPage() {
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [editingFood, setEditingFood] = useState<FoodLog | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<FoodTemplate | null>(null);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [fetchingProduct, setFetchingProduct] = useState(false);
 
   // Date state
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -419,6 +427,43 @@ export default function FoodPage() {
     );
   }
 
+  const fetchProductData = async (barcode: string) => {
+    setFetchingProduct(true);
+    setShowBarcodeScanner(false);
+
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+      const data = await response.json();
+
+      if (data.status === 1 && data.product) {
+        const product = data.product;
+        const nutriments = product.nutriments;
+
+        const caloriesPer100g = nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0;
+        const proteinPer100g = nutriments.proteins_100g || nutriments.proteins || 0;
+        const carbsPer100g = nutriments.carbohydrates_100g || nutriments.carbohydrates || 0;
+        const fatsPer100g = nutriments.fat_100g || nutriments.fat || 0;
+
+        setMealName(product.product_name || 'Unknown Product');
+        setCalories(Math.round(caloriesPer100g));
+        setProtein(parseFloat(proteinPer100g.toFixed(1)));
+        setCarbs(parseFloat(carbsPer100g.toFixed(1)));
+        setFats(parseFloat(fatsPer100g.toFixed(1)));
+        setQuantity(1);
+        setShowAddModal(true);
+
+        toast('Product found! Review and adjust serving size.');
+      } else {
+        alert('Product not found in database. Please enter manually.');
+      }
+    } catch (error) {
+      console.error('Error fetching product:', error);
+      alert('Failed to fetch product data. Please try again.');
+    } finally {
+      setFetchingProduct(false);
+    }
+  };
+
   // Calculate totals
   const totalCalories = foodLogs.reduce((sum, log) => sum + log.calories, 0);
   const totalProtein = foodLogs.reduce((sum, log) => sum + log.protein_g, 0);
@@ -556,19 +601,34 @@ export default function FoodPage() {
 
       {/* Add Food Modal */}
       <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); resetForm(); }} title={editingFood ? "Edit Food" : editingTemplate ? "Edit Template" : "Add Food"}>
-        {/* Button to open templates */}
-        {templates.length > 0 && !editingFood && !editingTemplate && (
-          <div className="mb-6">
+        {/* Buttons to open templates and barcode scanner */}
+        {!editingFood && !editingTemplate && (
+          <div className="mb-6 space-y-3">
             <Button 
-              onClick={() => { setShowTemplatesModal(true); }} 
-              variant="secondary"
+              onClick={() => setShowBarcodeScanner(true)}
+              variant="primary"
               className="w-full"
+              disabled={fetchingProduct}
             >
-              <Star size={16} className="inline mr-2" />
-              Browse Templates ({templates.length})
+              <Camera size={20} className="inline mr-2" />
+              {fetchingProduct ? 'Loading...' : 'Scan Barcode'}
             </Button>
+            
+            {templates.length > 0 && (
+              <Button 
+                onClick={() => { setShowTemplatesModal(true); }} 
+                variant="secondary"
+                className="w-full"
+              >
+                <Star size={16} className="inline mr-2" />
+                Browse Templates ({templates.length})
+              </Button>
+            )}
           </div>
         )}
+
+        <hr></hr>
+        <br></br>
 
         <form onSubmit={handleAddFood}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -832,6 +892,14 @@ export default function FoodPage() {
           )}
         </div>
       </Modal>
+
+      {/* Barcode Scanner */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onScanSuccess={fetchProductData}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
     </div>
   );
 }
