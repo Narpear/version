@@ -129,14 +129,32 @@ export default function FoodPage() {
         .eq('user_id', userId)
         .order('template_name');
 
-      // Load public templates
-      const { data: publicTemplatesData } = await supabase
-        .from('public_food_templates')
-        .select('*')
-        .order('template_name');
+      // Load ALL public templates by fetching in batches
+      let allPublicTemplates: FoodTemplate[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('public_food_templates')
+          .select('*')
+          .order('template_name')
+          .range(from, from + batchSize - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allPublicTemplates = [...allPublicTemplates, ...data];
+          from += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
 
       if (userTemplates) setTemplates(userTemplates);
-      if (publicTemplatesData) setPublicTemplates(publicTemplatesData);
+      setPublicTemplates(allPublicTemplates);
     } catch (error) {
       console.log('Error loading templates');
     }
@@ -809,7 +827,7 @@ export default function FoodPage() {
                 : 'bg-white hover:bg-accent/30'
             }`}
           >
-            General ({publicTemplates.length})
+            General
           </button>
         </div>
 
