@@ -8,7 +8,7 @@ import WeeklySummary from '@/components/WeeklySummary';
 import { supabase } from '@/lib/supabase';
 import { User, DailyEntry, Goal } from '@/types';
 import { calculateEnergyChange, calculateProgress, getProgressColor, getDeficitColor } from '@/lib/calculations';
-import { Utensils, Dumbbell, Droplet, TrendingDown, Target, Flame } from 'lucide-react';
+import { Utensils, Dumbbell, Droplet, TrendingUp, Target, Flame } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -266,7 +266,7 @@ export default function HomePage() {
 
         <Card style={{ backgroundColor: balance !== null ? balanceColor : '#FFFFFF' }}>
           <div className="flex items-center gap-2 mb-2">
-            <TrendingDown size={20} className="text-darkgray" />
+            <TrendingUp size={20} className="text-darkgray" />
             <p className="text-pixel-sm text-darkgray/70">{getBalanceLabel()}</p>
           </div>
           <p className="font-mono text-3xl">
@@ -303,7 +303,7 @@ export default function HomePage() {
           </Link>
           <Link href="/progress">
             <button className="w-full btn-pixel-success flex items-center justify-center gap-2">
-              <TrendingDown size={16} />
+              <TrendingUp size={16} />
               <span>Progress</span>
             </button>
           </Link>

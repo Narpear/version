@@ -66,6 +66,8 @@ export default function FoodPage() {
   const [editingTemplate, setEditingTemplate] = useState<FoodTemplate | null>(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [fetchingProduct, setFetchingProduct] = useState(false);
+  const [showSaveTemplateConfirm, setShowSaveTemplateConfirm] = useState(false);
+  const [foodToSaveAsTemplate, setFoodToSaveAsTemplate] = useState<FoodLog | null>(null);
 
   // Date state
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -330,6 +332,33 @@ export default function FoodPage() {
     } catch (error) {
       console.error('Error saving template:', error);
       alert('Failed to save template');
+    }
+  };
+
+  const handleSaveFoodAsTemplate = async () => {
+    if (!user || !foodToSaveAsTemplate) return;
+
+    try {
+      await supabase
+        .from('food_templates')
+        .insert({
+          user_id: user.id,
+          template_name: foodToSaveAsTemplate.meal_name,
+          meal_type: foodToSaveAsTemplate.meal_type,
+          calories: foodToSaveAsTemplate.calories,
+          protein_g: foodToSaveAsTemplate.protein_g,
+          carbs_g: foodToSaveAsTemplate.carbs_g,
+          fats_g: foodToSaveAsTemplate.fats_g,
+          is_healthy: foodToSaveAsTemplate.is_healthy,
+        });
+
+      toast('Saved as template!');
+      await loadTemplates(user.id);
+      setShowSaveTemplateConfirm(false);
+      setFoodToSaveAsTemplate(null);
+    } catch (error) {
+      console.error('Error saving as template:', error);
+      alert('Failed to save as template');
     }
   };
 
@@ -608,6 +637,16 @@ export default function FoodPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setFoodToSaveAsTemplate(meal);
+                          setShowSaveTemplateConfirm(true);
+                        }}
+                        className="p-2 border-2 border-darkgray bg-secondary hover:bg-secondary/70 transition-all"
+                        title="Save as template"
+                      >
+                        <Star size={16} />
+                      </button>
                       <button
                         onClick={() => handleEditFood(meal)}
                         className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70 transition-all"
@@ -931,6 +970,51 @@ export default function FoodPage() {
             )
           )}
         </div>
+      </Modal>
+
+      {/* Save as Template Confirmation Modal */}
+      <Modal 
+        isOpen={showSaveTemplateConfirm} 
+        onClose={() => {
+          setShowSaveTemplateConfirm(false);
+          setFoodToSaveAsTemplate(null);
+        }} 
+        title="Save as Template?"
+      >
+        {foodToSaveAsTemplate && (
+          <div>
+            <p className="font-mono mb-4">
+              Save "<strong>{foodToSaveAsTemplate.meal_name}</strong>" as a template?
+            </p>
+            <div className="p-3 border-2 border-darkgray bg-accent/20 mb-6">
+              <div className="grid grid-cols-2 gap-2 font-mono text-sm">
+                <p>{foodToSaveAsTemplate.calories} cal</p>
+                {foodToSaveAsTemplate.protein_g > 0 && <p>{foodToSaveAsTemplate.protein_g}g protein</p>}
+                {foodToSaveAsTemplate.carbs_g > 0 && <p>{foodToSaveAsTemplate.carbs_g}g carbs</p>}
+                {foodToSaveAsTemplate.fats_g > 0 && <p>{foodToSaveAsTemplate.fats_g}g fats</p>}
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <Button 
+                onClick={handleSaveFoodAsTemplate}
+                className="flex-1"
+              >
+                <Star size={16} className="inline mr-2" />
+                Save Template
+              </Button>
+              <Button 
+                onClick={() => {
+                  setShowSaveTemplateConfirm(false);
+                  setFoodToSaveAsTemplate(null);
+                }}
+                variant="secondary"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Barcode Scanner */}

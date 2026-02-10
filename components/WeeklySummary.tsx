@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { DailyEntry, Goal } from '@/types';
-import { Target, Award, Flame, Calendar } from 'lucide-react';
+import { Target, Award, Flame, Calendar, Dumbbell } from 'lucide-react';
 
 interface WeeklySummaryProps {
   userId: string;
@@ -26,7 +26,7 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
     try {
       const today = new Date();
       const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(today.getDate() - 7);
+      sevenDaysAgo.setDate(today.getDate() - 6);
 
       const startDate = sevenDaysAgo.toISOString().split('T')[0];
       const endDate = today.toISOString().split('T')[0];
@@ -213,8 +213,8 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
 
         {/* Workouts Completed */}
         <div className="text-center p-3 border-2 border-darkgray bg-secondary/20">
-          <p className="text-2xl mb-2"> </p>
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Workouts Done</p>
+          <Dumbbell size={24} className="mx-auto mb-2 text-darkgray" />
+          <p className="text-pixel-sm text-darkgray/70 mb-1">Exercises Done</p>
           <p className="font-mono text-3xl">{workoutsCompleted}</p>
           <p className="text-pixel-xs">this week</p>
         </div>
@@ -236,7 +236,7 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
         </div>
 
         <div className="text-center p-2 border-2 border-darkgray bg-white">
-          <p className="text-pixel-xs text-darkgray/70 mb-1">Healthy Meals</p>
+          <p className="text-pixel-xs text-darkgray/70 mb-1">Healthy Foods</p>
           <p className="font-mono text-xl">{healthyMeals} ({healthyMealPercent}%)</p>
         </div>
 
