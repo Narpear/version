@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User } from 'lucide-react';
+import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints } from 'lucide-react';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -10,6 +10,7 @@ export default function Navigation() {
   const navItems = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/gym', icon: Dumbbell, label: 'Gym' },
+    { href: '/steps', icon: Footprints, label: 'Steps' },
     { href: '/food', icon: Utensils, label: 'Food' },
     { href: '/progress', icon: Target, label: 'Progress' },
     { href: '/water', icon: Droplet, label: 'Water' },

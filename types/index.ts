@@ -7,6 +7,7 @@ export interface User {
   gender: 'male' | 'female';
   created_at?: string;
   updated_at?: string;
+  steps_goal?: number;
 }
 
 export interface Goal {

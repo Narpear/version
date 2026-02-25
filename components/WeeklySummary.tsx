@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { DailyEntry, Goal } from '@/types';
-import { Target, Award, Flame, Calendar, Dumbbell } from 'lucide-react';
+import { Target, Award, Flame, Calendar, Dumbbell, Footprints, Sparkles } from 'lucide-react';
 
 interface WeeklySummaryProps {
   userId: string;
@@ -16,6 +16,10 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
   const [mealsLogged, setMealsLogged] = useState(0);
   const [healthyMeals, setHealthyMeals] = useState(0);
   const [workoutsCompleted, setWorkoutsCompleted] = useState(0);
+  const [daysHitSteps, setDaysHitSteps] = useState(0);
+  const [totalSteps, setTotalSteps] = useState(0);
+  const [skincareConsistency, setSkincareConsistency] = useState(0);
+  const [avgProtein, setAvgProtein] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,58 +31,58 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
       const today = new Date();
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 6);
-
       const startDate = sevenDaysAgo.toISOString().split('T')[0];
       const endDate = today.toISOString().split('T')[0];
 
-      // Get active goal
-      const { data: goalData } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .single();
+      const [
+        { data: goalData },
+        { data: entriesData },
+        { data: foodData },
+        { data: gymData },
+        { data: stepsData },
+        { data: skincareData },
+        { data: userData },
+      ] = await Promise.all([
+        supabase.from('goals').select('*').eq('user_id', userId).eq('is_active', true).single(),
+        supabase.from('daily_entries').select('*').eq('user_id', userId).gte('date', startDate).lte('date', endDate).order('date', { ascending: true }),
+        supabase.from('food_logs').select('id, is_healthy, protein_g').eq('user_id', userId).gte('date', startDate).lte('date', endDate),
+        supabase.from('gym_logs').select('id').eq('user_id', userId).gte('date', startDate).lte('date', endDate),
+        supabase.from('steps_logs').select('steps, date').eq('user_id', userId).gte('date', startDate).lte('date', endDate),
+        supabase.from('skincare_logs').select('date, cleansing_done, serum_done, moisturizer_done').eq('user_id', userId).gte('date', startDate).lte('date', endDate),
+        supabase.from('users').select('steps_goal').eq('id', userId).single(),
+      ]);
 
-      if (goalData) {
-        setActiveGoal(goalData);
-      }
-
-      // Get daily entries
-      const { data } = await supabase
-        .from('daily_entries')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true });
-
-      if (data) {
-        setWeekData(data);
-      }
-
-      // Get meals logged this week
-      const { data: foodData } = await supabase
-        .from('food_logs')
-        .select('id, is_healthy')
-        .eq('user_id', userId)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      if (goalData) setActiveGoal(goalData);
+      if (entriesData) setWeekData(entriesData);
 
       if (foodData) {
         setMealsLogged(foodData.length);
         setHealthyMeals(foodData.filter(f => f.is_healthy).length);
+        const totalProtein = foodData.reduce((sum, f) => sum + (f.protein_g ?? 0), 0);
+        setAvgProtein(Math.round(totalProtein / 7));
       }
 
-      // Get workouts this week
-      const { data: gymData } = await supabase
-        .from('gym_logs')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('date', startDate)
-        .lte('date', endDate);
+      if (gymData) setWorkoutsCompleted(gymData.length);
 
-      if (gymData) {
-        setWorkoutsCompleted(gymData.length);
+      if (stepsData) {
+        const stepsGoal = userData?.steps_goal || 8000;
+        const hitting = stepsData.filter(s => s.steps >= stepsGoal).length;
+        const total = stepsData.reduce((sum, s) => sum + s.steps, 0);
+        setDaysHitSteps(hitting);
+        setTotalSteps(total);
+      }
+
+      if (skincareData) {
+        const dayMap = new Map<string, { cleansing: boolean; serum: boolean; moisturizer: boolean }>();
+        for (const log of skincareData) {
+          if (!dayMap.has(log.date)) dayMap.set(log.date, { cleansing: false, serum: false, moisturizer: false });
+          const day = dayMap.get(log.date)!;
+          if (log.cleansing_done) day.cleansing = true;
+          if (log.serum_done) day.serum = true;
+          if (log.moisturizer_done) day.moisturizer = true;
+        }
+        const fullDays = [...dayMap.values()].filter(d => d.cleansing && d.serum && d.moisturizer).length;
+        setSkincareConsistency(fullDays);
       }
 
     } catch (error) {
@@ -97,93 +101,65 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
       <Card title="This Week's Summary">
         <div className="text-center py-6">
           <p className="font-mono text-lg mb-2">Ready to start tracking?</p>
-          <p className="font-mono text-sm text-darkgray/70">
-            {!activeGoal && "Set a goal in Profile to get personalized insights."}
-          </p>
+          {!activeGoal && (
+            <p className="font-mono text-sm text-darkgray/70">Set a goal in Profile to get personalized insights.</p>
+          )}
         </div>
       </Card>
     );
   }
 
-  // Determine goal-specific metrics
   const goalType = activeGoal?.goal_type || null;
-  
-  // Universal stats
-  const daysLogged = weekData.filter(d => 
+
+  const daysLogged = weekData.filter(d =>
     d.total_calories_in > 0 || d.total_calories_out > 0 || d.water_glasses > 0
   ).length;
 
   const activeDays = weekData.filter(d => d.total_calories_out > 0).length;
   const daysHitWaterGoal = weekData.filter(d => d.water_glasses >= 8).length;
 
-  // Goal-aware metrics
   let daysHitGoal = 0;
   let avgCalorieBalance = 0;
   let goalLabel = 'On Track Days';
-  let goalThreshold = activeGoal?.daily_target_kcal || 0;
 
   if (goalType === 'loss') {
-    // For weight loss: want deficit >= daily_target_kcal (e.g., >= -300)
-    daysHitGoal = weekData.filter(d => 
-      (d.apparent_deficit ?? 0) >= goalThreshold
-    ).length;
+    daysHitGoal = weekData.filter(d => (d.apparent_deficit ?? 0) >= 300).length;
     goalLabel = 'Hit Deficit Goal';
     const totalDeficit = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalDeficit / Math.max(daysLogged, 1));
   } else if (goalType === 'gain') {
-    // For weight gain: want surplus (negative deficit) <= daily_target_kcal (e.g., <= +300)
-    daysHitGoal = weekData.filter(d => 
-      (d.apparent_deficit ?? 0) <= goalThreshold
-    ).length;
+    daysHitGoal = weekData.filter(d => (d.apparent_deficit ?? 0) <= -300).length;
     goalLabel = 'Hit Surplus Goal';
     const totalSurplus = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalSurplus / Math.max(daysLogged, 1));
   } else if (goalType === 'maintenance') {
-    // For maintenance: want balance within ±200 kcal
-    const maintenanceWindow = 200;
-    daysHitGoal = weekData.filter(d => 
-      Math.abs(d.apparent_deficit ?? 0) <= maintenanceWindow
-    ).length;
+    daysHitGoal = weekData.filter(d => Math.abs(d.apparent_deficit ?? 0) <= 200).length;
     goalLabel = 'Stayed Balanced';
     const totalBalance = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalBalance / Math.max(daysLogged, 1));
   } else {
-    // No goal set: just show days with any deficit/surplus tracked
     daysHitGoal = weekData.filter(d => d.apparent_deficit !== null && d.apparent_deficit !== undefined).length;
     goalLabel = 'Days Calculated';
     const totalBalance = weekData.reduce((sum, d) => sum + (d.apparent_deficit ?? 0), 0);
     avgCalorieBalance = Math.round(totalBalance / Math.max(daysLogged, 1));
   }
 
-  // Calculate current streak
   let currentStreak = 0;
-  const sortedData = [...weekData].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-  
+  const sortedData = [...weekData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   for (const entry of sortedData) {
-    const hasActivity = entry.total_calories_in > 0 || 
-                       entry.total_calories_out > 0 || 
-                       entry.water_glasses > 0;
-    if (hasActivity) {
-      currentStreak++;
-    } else {
-      break;
-    }
+    const hasActivity = entry.total_calories_in > 0 || entry.total_calories_out > 0 || entry.water_glasses > 0;
+    if (hasActivity) currentStreak++;
+    else break;
   }
 
   const consistencyScore = Math.round((daysLogged / 7) * 100);
   const healthyMealPercent = mealsLogged > 0 ? Math.round((healthyMeals / mealsLogged) * 100) : 0;
 
-  // Dynamic messaging
-  const getBalanceLabel = () => {
-    if (!goalType) return `Avg Balance: ${avgCalorieBalance} cal`;
-    return `Avg Deficit: ${avgCalorieBalance} cal`;
-  };
-
   const getGoalDescription = () => {
-    if (!goalType) return 'Set a goal in Profile';
-    return '300+ cal deficit';
+    if (!goalType) return 'days tracked';
+    if (goalType === 'loss') return '300+ cal deficit';
+    if (goalType === 'gain') return '300+ cal surplus';
+    return '±200 cal of target';
   };
 
   return (
@@ -194,8 +170,8 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {/* Streak Days */}
+      {/* Primary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div className="text-center p-3 border-2 border-darkgray bg-primary/20">
           <Flame size={24} className="mx-auto mb-2 text-darkgray" />
           <p className="text-pixel-sm text-darkgray/70 mb-1">Current Streak</p>
@@ -203,7 +179,6 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
           <p className="text-pixel-xs">days</p>
         </div>
 
-        {/* Days Hit Goal (Adaptive) */}
         <div className="text-center p-3 border-2 border-darkgray bg-success/20">
           <Target size={24} className="mx-auto mb-2 text-darkgray" />
           <p className="text-pixel-sm text-darkgray/70 mb-1">{goalLabel}</p>
@@ -211,7 +186,6 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
           <p className="text-pixel-xs">{getGoalDescription()}</p>
         </div>
 
-        {/* Workouts Completed */}
         <div className="text-center p-3 border-2 border-darkgray bg-secondary/20">
           <Dumbbell size={24} className="mx-auto mb-2 text-darkgray" />
           <p className="text-pixel-sm text-darkgray/70 mb-1">Exercises Done</p>
@@ -219,12 +193,11 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
           <p className="text-pixel-xs">this week</p>
         </div>
 
-        {/* Active Days */}
         <div className="text-center p-3 border-2 border-darkgray bg-accent/20">
-          <Calendar size={24} className="mx-auto mb-2 text-darkgray" />
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Active Days</p>
-          <p className="font-mono text-3xl">{activeDays}/7</p>
-          <p className="text-pixel-xs">days</p>
+          <Footprints size={24} className="mx-auto mb-2 text-darkgray" />
+          <p className="text-pixel-sm text-darkgray/70 mb-1">Step Goal Days</p>
+          <p className="font-mono text-3xl">{daysHitSteps}/7</p>
+          <p className="text-pixel-xs">8,000+ steps</p>
         </div>
       </div>
 
@@ -241,13 +214,33 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
         </div>
 
         <div className="text-center p-2 border-2 border-darkgray bg-white">
+          <p className="text-pixel-xs text-darkgray/70 mb-1">Avg Protein/day</p>
+          <p className="font-mono text-xl">{avgProtein}g</p>
+        </div>
+
+        <div className="text-center p-2 border-2 border-darkgray bg-white">
+          <p className="text-pixel-xs text-darkgray/70 mb-1">Total Steps</p>
+          <p className="font-mono text-xl">{totalSteps.toLocaleString()}</p>
+        </div>
+
+        <div className="text-center p-2 border-2 border-darkgray bg-white">
           <p className="text-pixel-xs text-darkgray/70 mb-1">Water Goals</p>
           <p className="font-mono text-xl">{daysHitWaterGoal}/7</p>
         </div>
 
         <div className="text-center p-2 border-2 border-darkgray bg-white">
-          <p className="text-pixel-xs text-darkgray/70 mb-1">{getBalanceLabel().split(':')[0]}</p>
-          <p className="font-mono text-xl">{Math.abs(avgCalorieBalance)}</p>
+          <p className="text-pixel-xs text-darkgray/70 mb-1">Active Days</p>
+          <p className="font-mono text-xl">{activeDays}/7</p>
+        </div>
+
+        <div className="text-center p-2 border-2 border-darkgray bg-white">
+          <p className="text-pixel-xs text-darkgray/70 mb-1">Skincare Days</p>
+          <p className="font-mono text-xl">{skincareConsistency}/7</p>
+        </div>
+
+        <div className="text-center p-2 border-2 border-darkgray bg-white">
+          <p className="text-pixel-xs text-darkgray/70 mb-1">Avg Balance</p>
+          <p className="font-mono text-xl">{Math.abs(avgCalorieBalance)} cal</p>
         </div>
       </div>
 
@@ -258,24 +251,22 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
           <p className="text-pixel-sm font-bold">{consistencyScore}%</p>
         </div>
         <div className="progress-pixel h-6">
-          <div 
+          <div
             className="h-full transition-all flex items-center justify-center"
-            style={{ 
+            style={{
               width: `${consistencyScore}%`,
               backgroundColor: consistencyScore >= 80 ? '#C1FBA4' : consistencyScore >= 50 ? '#FFF2CC' : '#FFB5E8',
-              borderRight: consistencyScore > 0 ? '4px solid #4A4A4A' : 'none'
+              borderRight: consistencyScore > 0 ? '4px solid #4A4A4A' : 'none',
             }}
           >
             {consistencyScore > 10 && (
-              <span className="font-mono text-xs text-darkgray font-bold">
-                {consistencyScore}%
-              </span>
+              <span className="font-mono text-xs text-darkgray font-bold">{consistencyScore}%</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Achievements (Goal-Aware) */}
+      {/* Achievements */}
       <div className="space-y-2">
         {daysLogged === 7 && (
           <div className="p-3 bg-success border-2 border-darkgray flex items-center gap-3">
@@ -302,25 +293,37 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
         )}
         {workoutsCompleted >= 5 && (
           <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
-            <span className="text-2xl"> </span>
+            <Dumbbell size={24} className="text-darkgray" />
             <p className="font-mono text-sm">Strong week. {workoutsCompleted} workouts completed.</p>
+          </div>
+        )}
+        {daysHitSteps >= 5 && (
+          <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
+            <Footprints size={24} className="text-darkgray" />
+            <p className="font-mono text-sm">Hit 8,000 steps on {daysHitSteps} days.</p>
+          </div>
+        )}
+        {skincareConsistency >= 5 && (
+          <div className="p-3 bg-accent border-2 border-darkgray flex items-center gap-3">
+            <Sparkles size={24} className="text-darkgray" />
+            <p className="font-mono text-sm">Full skincare routine on {skincareConsistency} days.</p>
           </div>
         )}
         {daysHitWaterGoal >= 5 && (
           <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
-            <span className="text-2xl"> </span>
+            <span className="text-2xl">💧</span>
             <p className="font-mono text-sm">Hydration goal met on {daysHitWaterGoal} days.</p>
           </div>
         )}
         {healthyMealPercent >= 80 && mealsLogged >= 10 && (
           <div className="p-3 bg-success border-2 border-darkgray flex items-center gap-3">
-            <span className="text-2xl"> </span>
-            <p className="font-mono text-sm">{healthyMealPercent}% healthy meals.</p>
+            <span className="text-2xl">🥗</span>
+            <p className="font-mono text-sm">{healthyMealPercent}% healthy meals this week.</p>
           </div>
         )}
       </div>
 
-      {/* Motivational Messages */}
+      {/* Motivational */}
       {consistencyScore < 50 && (
         <div className="mt-4 p-3 bg-warning/20 border-2 border-darkgray">
           <p className="font-mono text-sm">Try logging every day this week.</p>
