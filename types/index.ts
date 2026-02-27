@@ -57,6 +57,8 @@ export interface GymLog {
   cooldown_done: boolean;
   meditation_done: boolean;
   notes: string | null;
+  muscle_groups: string[];
+  is_cardio: boolean;
 }
 
 export interface FoodLog {
@@ -105,4 +107,11 @@ export interface WorkoutTemplate {
   weight_kg: number | null;
   calories_burned: number;
   notes: string | null;
+}
+
+export interface ExerciseLibrary {
+  id: string;
+  exercise_name: string;
+  muscle_groups: string[];
+  is_cardio: boolean;
 }

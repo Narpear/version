@@ -693,7 +693,7 @@ export default function FoodPage() {
               {fetchingProduct ? 'Loading...' : 'Scan Barcode'}
             </Button>
             
-            {templates.length > 0 && (
+            {(
               <Button 
                 onClick={() => { setShowTemplatesModal(true); }} 
                 variant="secondary"
