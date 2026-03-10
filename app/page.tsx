@@ -264,7 +264,7 @@ export default function HomePage() {
           </div>
         </Card>
 
-        <Card style={{ backgroundColor: balance !== null ? balanceColor : '#FFFFFF' }}>
+        <Card style={{ backgroundColor: balance !== null ? balanceColor : 'var(--color-surface)' }}>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={20} className="text-darkgray" />
             <p className="text-pixel-sm text-darkgray/70">{getBalanceLabel()}</p>

@@ -97,31 +97,31 @@ export function getApparentDeficitColor(
   apparentDeficit: number,
   goalType?: 'loss' | 'gain' | 'maintenance'
 ): string {
+  const isDark = typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark';
+
   if (!goalType || goalType === 'loss') {
-    // Weight loss: want high deficit (green)
-    if (apparentDeficit >= 500) return '#C6EFCE'; // Light green
-    if (apparentDeficit >= 300) return '#E2F0D9'; // Lighter green
-    if (apparentDeficit >= 100) return '#FFF2CC'; // Light yellow
-    if (apparentDeficit >= 0) return '#FCE4D6';   // Light orange
-    if (apparentDeficit >= -100) return '#FDE9D9'; // Peach
-    if (apparentDeficit >= -300) return '#FADBD8'; // Light pink
-    return '#F4CCCC'; // Pink
+    if (apparentDeficit >= 500) return isDark ? '#1a3d2b' : '#C6EFCE';
+    if (apparentDeficit >= 300) return isDark ? '#1e3325' : '#E2F0D9';
+    if (apparentDeficit >= 100) return isDark ? '#3d3520' : '#FFF2CC';
+    if (apparentDeficit >= 0)   return isDark ? '#3d2a1a' : '#FCE4D6';
+    if (apparentDeficit >= -100) return isDark ? '#3d2518' : '#FDE9D9';
+    if (apparentDeficit >= -300) return isDark ? '#3d1f1f' : '#FADBD8';
+    return isDark ? '#3a1a1a' : '#F4CCCC';
   } else if (goalType === 'gain') {
-    // Weight gain: want surplus (negative deficit = green)
-    if (apparentDeficit <= -500) return '#C6EFCE'; // Light green (high surplus)
-    if (apparentDeficit <= -300) return '#E2F0D9'; // Lighter green
-    if (apparentDeficit <= -100) return '#FFF2CC'; // Light yellow
-    if (apparentDeficit <= 0) return '#FCE4D6';    // Light orange
-    if (apparentDeficit <= 100) return '#FDE9D9';  // Peach
-    if (apparentDeficit <= 300) return '#FADBD8';  // Light pink
-    return '#F4CCCC'; // Pink (deficit when wanting gain)
+    if (apparentDeficit <= -500) return isDark ? '#1a3d2b' : '#C6EFCE';
+    if (apparentDeficit <= -300) return isDark ? '#1e3325' : '#E2F0D9';
+    if (apparentDeficit <= -100) return isDark ? '#3d3520' : '#FFF2CC';
+    if (apparentDeficit <= 0)    return isDark ? '#3d2a1a' : '#FCE4D6';
+    if (apparentDeficit <= 100)  return isDark ? '#3d2518' : '#FDE9D9';
+    if (apparentDeficit <= 300)  return isDark ? '#3d1f1f' : '#FADBD8';
+    return isDark ? '#3a1a1a' : '#F4CCCC';
   } else {
-    // Maintenance: want balance (close to 0)
     const abs = Math.abs(apparentDeficit);
-    if (abs <= 100) return '#C6EFCE';  // Perfect balance
-    if (abs <= 200) return '#E2F0D9';  // Good
-    if (abs <= 300) return '#FFF2CC';  // Okay
-    return '#FCE4D6'; // Off balance
+    if (abs <= 100) return isDark ? '#1a3d2b' : '#C6EFCE';
+    if (abs <= 200) return isDark ? '#1e3325' : '#E2F0D9';
+    if (abs <= 300) return isDark ? '#3d3520' : '#FFF2CC';
+    return isDark ? '#3d2a1a' : '#FCE4D6';
   }
 }
 

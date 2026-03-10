@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import ToastProvider from "@/components/ui/ToastProvider";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "Version - Wellbeing Tracker",
@@ -21,6 +22,7 @@ export default function RootLayout({
           <main className="min-h-screen">
             {children}
           </main>
+          <ThemeToggle />
         </ToastProvider>
       </body>
     </html>

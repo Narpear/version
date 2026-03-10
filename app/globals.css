@@ -3,10 +3,41 @@
 
 @import "tailwindcss";
 
+/* Theme Variables */
+:root {
+  --color-primary: #FFB5E8;
+  --color-secondary: #B5DEFF;
+  --color-accent: #BFFCC6;
+  --color-warning: #FFC9DE;
+  --color-success: #C1FBA4;
+  --color-background: #FFF9F0;
+  --color-darkgray: #4A4A4A;
+  --color-lavender: #E0BBE4;
+  --color-surface: #ffffff;
+  --color-text: #4A4A4A;
+  --color-scrollbar-track: #FFF9F0;
+  --color-scrollbar-thumb: #FFB5E8;
+}
+
+[data-theme="dark"] {
+  --color-primary: #a855b5;
+  --color-secondary: #2a6496;
+  --color-accent: #2d6a4f;
+  --color-warning: #9b4d6b;
+  --color-success: #4a7c59;
+  --color-background: #1a1a1a;
+  --color-darkgray: #e0e0e0;
+  --color-lavender: #3d2b4f;
+  --color-surface: #2a2a2a;
+  --color-text: #f0f0f0;
+  --color-scrollbar-track: #1a1a1a;
+  --color-scrollbar-thumb: #a855b5;
+}
+
 /* Base Styles */
 body {
-  background-color: #FFF9F0;
-  color: #4A4A4A;
+  background-color: var(--color-background);
+  color: var(--color-text);
   font-family: "VT323", monospace;
 }
 
@@ -15,9 +46,9 @@ body {
   padding: 0.75rem 1.5rem;
   font-family: "Press Start 2P", cursive;
   font-size: 0.75rem;
-  background-color: #FFB5E8;
-  color: #4A4A4A;
-  border: 2px solid #4A4A4A;
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  border: 2px solid var(--color-darkgray);
   box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
   cursor: pointer;
   text-transform: uppercase;
@@ -33,9 +64,9 @@ body {
   padding: 0.75rem 1.5rem;
   font-family: "Press Start 2P", cursive;
   font-size: 0.75rem;
-  background-color: #B5DEFF;
-  color: #4A4A4A;
-  border: 2px solid #4A4A4A;
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+  border: 2px solid var(--color-darkgray);
   box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
   cursor: pointer;
   text-transform: uppercase;
@@ -51,9 +82,9 @@ body {
   padding: 0.75rem 1.5rem;
   font-family: "Press Start 2P", cursive;
   font-size: 0.75rem;
-  background-color: #C1FBA4;
-  color: #4A4A4A;
-  border: 2px solid #4A4A4A;
+  background-color: var(--color-success);
+  color: var(--color-text);
+  border: 2px solid var(--color-darkgray);
   box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
   cursor: pointer;
   text-transform: uppercase;
@@ -67,8 +98,8 @@ body {
 
 /* Pixel Card */
 .card-pixel {
-  background-color: white;
-  border: 2px solid #4A4A4A;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-darkgray);
   box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
   padding: 1.5rem;
 }
@@ -76,9 +107,9 @@ body {
 /* Pixel Input */
 .input-pixel {
   padding: 0.75rem 1rem;
-  border: 2px solid #4A4A4A;
-  background-color: white;
-  color: #4A4A4A;
+  border: 2px solid var(--color-darkgray);
+  background-color: var(--color-surface);
+  color: var(--color-text);
   font-family: "VT323", monospace;
   font-size: 1.125rem;
   transition: all 0.2s;
@@ -114,9 +145,9 @@ body {
   pointer-events: none;
   font-family: "Press Start 2P", cursive;
   font-size: 0.625rem;
-  background: #FFF9F0;
-  color: #4A4A4A;
-  border: 2px solid #4A4A4A;
+  background: var(--color-background);
+  color: var(--color-text);
+  border: 2px solid var(--color-darkgray);
   box-shadow: 3px 3px 0px 0px rgba(0,0,0,0.1);
   padding: 0.5rem 0.75rem;
   text-align: center;
@@ -134,14 +165,14 @@ body {
 .heading-pixel {
   font-family: "Press Start 2P", cursive;
   font-size: 1.5rem;
-  color: #4A4A4A;
+  color: var(--color-text);
   margin-bottom: 1.5rem;
 }
 
 .subheading-pixel {
   font-family: "Press Start 2P", cursive;
   font-size: 0.875rem;
-  color: #4A4A4A;
+  color: var(--color-text);
   margin-bottom: 1rem;
 }
 
@@ -151,16 +182,16 @@ body {
   padding: 0.25rem 0.75rem;
   font-family: "Press Start 2P", cursive;
   font-size: 0.75rem;
-  background-color: #BFFCC6;
-  border: 2px solid #4A4A4A;
+  background-color: var(--color-accent);
+  border: 2px solid var(--color-darkgray);
 }
 
 /* Progress Bar */
 .progress-pixel {
   width: 100%;
   height: 2rem;
-  background-color: white;
-  border: 2px solid #4A4A4A;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-darkgray);
   position: relative;
   overflow: hidden;
 }
@@ -199,15 +230,35 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #FFF9F0;
-  border: 2px solid #4A4A4A;
+  background: var(--color-scrollbar-track);
+  border: 2px solid var(--color-darkgray);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #FFB5E8;
-  border: 2px solid #4A4A4A;
+  background: var(--color-scrollbar-thumb);
+  border: 2px solid var(--color-darkgray);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #B5DEFF;
+  background: var(--color-secondary);
+}
+
+/* Dark mode overrides for hardcoded Tailwind whites */
+[data-theme="dark"] .bg-white {
+  background-color: var(--color-surface) !important;
+}
+
+[data-theme="dark"] .text-darkgray\/70,
+[data-theme="dark"] .text-darkgray\/60,
+[data-theme="dark"] .text-darkgray\/50,
+[data-theme="dark"] .text-darkgray\/40 {
+  color: rgba(224, 224, 224, 0.7) !important;
+}
+
+[data-theme="dark"] .border-darkgray {
+  border-color: var(--color-darkgray) !important;
+}
+
+[data-theme="dark"] .hover\:bg-lavender:hover {
+  background-color: var(--color-lavender) !important;
 }
