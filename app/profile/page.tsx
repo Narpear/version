@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { User, Goal } from '@/types';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress, getProgressColor } from '@/lib/calculations';
 import { useToast } from '@/components/ui/ToastProvider';
+import { Edit, X, Check } from 'lucide-react';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -17,9 +18,17 @@ export default function ProfilePage() {
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
 
-  // Form state
+  // Profile edit state
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAge, setEditAge] = useState(0);
+  const [editHeight, setEditHeight] = useState(0);
+  const [editGender, setEditGender] = useState<'male' | 'female'>('female');
+
+  // Goal form state
   const [goalType, setGoalType] = useState<'loss' | 'gain' | 'maintenance'>('loss');
   const [startWeight, setStartWeight] = useState(0);
   const [goalWeight, setGoalWeight] = useState(0);
@@ -34,13 +43,17 @@ export default function ProfilePage() {
     
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
+    setEditName(parsedUser.name || '');
+    setEditAge(parsedUser.age || 0);
+    setEditHeight(parsedUser.height_cm || 0);
+    setEditGender(parsedUser.gender || 'female');
     loadGoal(parsedUser.id);
     loadCurrentWeight(parsedUser.id);
   }, [router]);
 
   const loadGoal = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('goals')
         .select('*')
         .eq('user_id', userId)
@@ -48,7 +61,6 @@ export default function ProfilePage() {
         .single();
 
       if (data) {
-        // Calculate cumulative deficits from all entries since goal start
         const { data: allEntries } = await supabase
           .from('daily_entries')
           .select('apparent_deficit, actual_deficit')
@@ -59,17 +71,10 @@ export default function ProfilePage() {
         if (allEntries) {
           const cumulativeApparent = allEntries.reduce((sum, e) => sum + (e.apparent_deficit || 0), 0);
           const cumulativeActual = allEntries.reduce((sum, e) => sum + (e.actual_deficit || 0), 0);
-          
-          // Update goal with cumulative values
-          await supabase
-            .from('goals')
-            .update({
-              cumulative_apparent_deficit: cumulativeApparent,
-              cumulative_actual_deficit: cumulativeActual
-            })
-            .eq('id', data.id);
-            
-          // Update local state
+          await supabase.from('goals').update({
+            cumulative_apparent_deficit: cumulativeApparent,
+            cumulative_actual_deficit: cumulativeActual
+          }).eq('id', data.id);
           data.cumulative_apparent_deficit = cumulativeApparent;
           data.cumulative_actual_deficit = cumulativeActual;
         }
@@ -89,8 +94,7 @@ export default function ProfilePage() {
 
   const loadCurrentWeight = async (userId: string) => {
     try {
-      // Get the most recent weight entry
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('daily_entries')
         .select('weight_kg')
         .eq('user_id', userId)
@@ -98,19 +102,52 @@ export default function ProfilePage() {
         .order('date', { ascending: false })
         .limit(1)
         .single();
-
-      if (data && data.weight_kg) {
-        setCurrentWeight(data.weight_kg);
-      }
+      if (data?.weight_kg) setCurrentWeight(data.weight_kg);
     } catch (error) {
       console.log('No weight entries found');
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: editName,
+          age: editAge,
+          height_cm: editHeight,
+          gender: editGender,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      const updatedUser = { ...user, name: editName, age: editAge, height_cm: editHeight, gender: editGender };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setEditingProfile(false);
+      toast('Profile updated!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast('Failed to save profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (!user) return;
+    setEditName(user.name || '');
+    setEditAge(user.age || 0);
+    setEditHeight(user.height_cm || 0);
+    setEditGender(user.gender || 'female');
+    setEditingProfile(false);
+  };
+
   const handleSaveGoal = async () => {
     if (!user) return;
-    
-    // Validate weights based on goal type
     if (goalType === 'loss' && goalWeight >= startWeight) {
       alert('For weight loss, goal weight must be less than start weight');
       return;
@@ -123,23 +160,13 @@ export default function ProfilePage() {
       alert('For maintenance, goal weight should be close to start weight (±2kg)');
       return;
     }
-    
     setSaving(true);
-
     try {
-      // Calculate total energy needed and daily target
       const totalEnergyNeeded = calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
       const dailyTarget = calculateDailyTargetKcal(goalType);
-
-      // Deactivate old goals
       if (activeGoal) {
-        await supabase
-          .from('goals')
-          .update({ is_active: false })
-          .eq('id', activeGoal.id);
+        await supabase.from('goals').update({ is_active: false }).eq('id', activeGoal.id);
       }
-
-      // Create new goal
       const { data, error } = await supabase
         .from('goals')
         .insert({
@@ -157,9 +184,7 @@ export default function ProfilePage() {
         })
         .select()
         .single();
-
       if (error) throw error;
-
       setActiveGoal(data);
       toast('Saved!');
     } catch (error) {
@@ -176,11 +201,7 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return (
-      <div className="container-pixel">
-        <p className="font-mono text-lg">Loading...</p>
-      </div>
-    );
+    return <div className="container-pixel"><p className="font-mono text-lg">Loading...</p></div>;
   }
 
   if (!user) return null;
@@ -188,19 +209,14 @@ export default function ProfilePage() {
   const weightDiff = Math.abs(startWeight - goalWeight);
   const totalEnergyNeeded = calculateGoalEnergyNeeded(startWeight, goalWeight, goalType);
   const dailyTarget = calculateDailyTargetKcal(goalType);
-
   const progress = activeGoal && activeGoal.total_energy_kcal_needed
     ? calculateProgress(activeGoal.cumulative_actual_deficit || 0, activeGoal.total_energy_kcal_needed, activeGoal.goal_type)
     : 0;
-
   const progressPercent = Math.min(progress * 100, 100);
   const progressColor = getProgressColor(progress);
-
-  const bmi =
-    user?.height_cm && (currentWeight || activeGoal?.start_weight_kg)
-      ? (Number(currentWeight || activeGoal?.start_weight_kg) / Math.pow(Number(user.height_cm) / 100, 2))
-      : null;
-
+  const bmi = user?.height_cm && (currentWeight || activeGoal?.start_weight_kg)
+    ? (Number(currentWeight || activeGoal?.start_weight_kg) / Math.pow(Number(user.height_cm) / 100, 2))
+    : null;
   const bmiLabel = (value: number) => {
     if (value < 18.5) return 'Underweight';
     if (value < 25) return 'Normal';
@@ -215,40 +231,107 @@ export default function ProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Info Card */}
         <Card title="Personal Info">
-          <div className="space-y-3">
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Name</p>
-              <p className="font-mono text-lg">{user.name}</p>
-            </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Email</p>
-              <p className="font-mono text-lg">{user.email}</p>
-            </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Height</p>
-              <p className="font-mono text-lg">{user.height_cm} cm</p>
-            </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Age</p>
-              <p className="font-mono text-lg">{user.age} years</p>
-            </div>
-          </div>
-          <Button onClick={handleLogout} variant="secondary" className="w-full mt-6">
-            Logout
-          </Button>
-          <p className="text-center font-mono text-xs mt-4 text-darkgray/50">
-            View the {' '}
-            <a href="/privacy" className="text-primary underline">
-              Privacy Policy
-            </a>
-          </p>
-          <br></br>
+          {!editingProfile ? (
+            // View mode
+            <>
+              <div className="space-y-3 mb-6">
+                {[
+                  { label: 'Name', value: user.name },
+                  { label: 'Email', value: user.email },
+                  { label: 'Height', value: `${user.height_cm} cm` },
+                  { label: 'Age', value: `${user.age} years` },
+                  { label: 'Gender', value: user.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : '—' },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-pixel-sm text-darkgray/70">{label}</p>
+                    <p className="font-mono text-lg">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <Button
+                onClick={() => setEditingProfile(true)}
+                variant="secondary"
+                className="w-full mb-3"
+              >
+                <Edit size={14} className="inline mr-2" />
+                Edit Profile
+              </Button>
+              <Button onClick={handleLogout} variant="secondary" className="w-full">
+                Logout
+              </Button>
+              <p className="text-center font-mono text-xs mt-4 text-darkgray/50">
+                View the{' '}
+                <a href="/privacy" className="text-primary underline">Privacy Policy</a>
+              </p>
+            </>
+          ) : (
+            // Edit mode
+            <>
+              <div className="space-y-3 mb-4">
+                <Input
+                  label="Name"
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="Your name"
+                />
+                <Input
+                  label="Age"
+                  type="number"
+                  value={editAge}
+                  onChange={e => setEditAge(parseInt(e.target.value) || 0)}
+                  min={10}
+                  max={120}
+                />
+                <Input
+                  label="Height (cm)"
+                  type="number"
+                  value={editHeight}
+                  onChange={e => setEditHeight(parseFloat(e.target.value) || 0)}
+                  step={0.5}
+                  min={50}
+                  max={300}
+                />
+                <div>
+                  <label className="block text-pixel-sm mb-2">Gender</label>
+                  <select
+                    value={editGender}
+                    onChange={e => setEditGender(e.target.value as 'male' | 'female')}
+                    className="input-pixel w-full"
+                  >
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                </div>
+                <p className="font-mono text-xs text-darkgray/50">
+                  Email cannot be changed
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  className="flex-1"
+                >
+                  <Check size={14} className="inline mr-2" />
+                  {savingProfile ? 'Saving...' : 'Save'}
+                </Button>
+                <Button
+                  onClick={handleCancelEdit}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  <X size={14} className="inline mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            </>
+          )}
         </Card>
 
         {/* Goal Settings Card */}
         <Card title="Goal Settings">
           <div className="space-y-4">
-            {/* Goal Type */}
             <div>
               <label className="block text-pixel-sm mb-2">Goal Type</label>
               <select
@@ -261,26 +344,8 @@ export default function ProfilePage() {
                 <option value="maintenance">Maintenance</option>
               </select>
             </div>
-
-            {/* Start Date */}
-            <Input
-              type="date"
-              label="Start Date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-
-            {/* Start Weight */}
-            <Input
-              type="number"
-              label="Start Weight (kg)"
-              value={startWeight}
-              onChange={(e) => setStartWeight(parseFloat(e.target.value))}
-              step={0.1}
-              required
-            />
-
-            {/* Goal Weight */}
+            <Input type="date" label="Start Date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input type="number" label="Start Weight (kg)" value={startWeight} onChange={(e) => setStartWeight(parseFloat(e.target.value))} step={0.1} required />
             <Input
               type="number"
               label="Goal Weight (kg)"
@@ -290,8 +355,6 @@ export default function ProfilePage() {
               step={0.1}
               required
             />
-
-            {/* Calculated Info */}
             {startWeight > 0 && goalWeight > 0 && (
               <div className="p-4 bg-accent/30 border-2 border-darkgray mt-4">
                 <p className="text-pixel-sm mb-2">Goal Summary:</p>
@@ -308,13 +371,10 @@ export default function ProfilePage() {
                   Daily Goal: {dailyTarget} kcal {goalType === 'loss' ? 'deficit' : goalType === 'gain' ? 'surplus' : 'balance'}
                 </p>
                 {bmi !== null && (
-                  <p className="font-mono text-sm mt-2">
-                    BMI: {bmi.toFixed(1)} ({bmiLabel(bmi)})
-                  </p>
+                  <p className="font-mono text-sm mt-2">BMI: {bmi.toFixed(1)} ({bmiLabel(bmi)})</p>
                 )}
               </div>
             )}
-
             <Button onClick={handleSaveGoal} disabled={saving} className="w-full">
               {saving ? 'Saving...' : 'Save Goal'}
             </Button>
@@ -322,74 +382,51 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      {/* Current Goal Display with Progress */}
+      {/* Current Goal Display */}
       {activeGoal && (
         <Card title="Current Active Goal" className="mt-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Type</p>
-              <p className="font-mono text-lg capitalize">{activeGoal.goal_type}</p>
-            </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Start Weight</p>
-              <p className="font-mono text-lg">{activeGoal.start_weight_kg} kg</p>
-            </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Current Weight</p>
-              <p className="font-mono text-lg">
-                {currentWeight ? `${currentWeight} kg` : 'Not tracked yet'}
-              </p>
-            </div>
-            <div>
-              <p className="text-pixel-sm text-darkgray/70">Goal Weight</p>
-              <p className="font-mono text-lg">{activeGoal.goal_weight_kg} kg</p>
-            </div>
+            {[
+              { label: 'Type', value: activeGoal.goal_type.charAt(0).toUpperCase() + activeGoal.goal_type.slice(1) },
+              { label: 'Start Weight', value: `${activeGoal.start_weight_kg} kg` },
+              { label: 'Current Weight', value: currentWeight ? `${currentWeight} kg` : 'Not tracked yet' },
+              { label: 'Goal Weight', value: `${activeGoal.goal_weight_kg} kg` },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-pixel-sm text-darkgray/70">{label}</p>
+                <p className="font-mono text-lg">{value}</p>
+              </div>
+            ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
               <p className="text-pixel-sm text-darkgray/70">
-                {activeGoal.goal_type === 'maintenance'
-                  ? 'Daily Target'
-                  : activeGoal.goal_type === 'loss'
-                    ? 'Total Deficit Needed'
-                    : 'Total Surplus Needed'}
+                {activeGoal.goal_type === 'maintenance' ? 'Daily Target' : activeGoal.goal_type === 'loss' ? 'Total Deficit Needed' : 'Total Surplus Needed'}
               </p>
               <p className="font-mono text-lg">
-                {activeGoal.goal_type === 'maintenance' 
+                {activeGoal.goal_type === 'maintenance'
                   ? `${activeGoal.daily_target_kcal > 0 ? '+' : ''}${activeGoal.daily_target_kcal} kcal/day`
-                  : `${activeGoal.total_energy_kcal_needed?.toLocaleString() || 0} cal`
-                }
+                  : `${activeGoal.total_energy_kcal_needed?.toLocaleString() || 0} cal`}
               </p>
             </div>
             <div>
               <p className="text-pixel-sm text-darkgray/70">Apparent (Food/Gym)</p>
-              <p className="font-mono text-lg">
-                {activeGoal.cumulative_apparent_deficit?.toLocaleString() || '0'} cal
-              </p>
+              <p className="font-mono text-lg">{activeGoal.cumulative_apparent_deficit?.toLocaleString() || '0'} cal</p>
             </div>
             <div>
               <p className="text-pixel-sm text-darkgray/70">Actual (Weight Change)</p>
-              <p className="font-mono text-lg font-bold">
-                {activeGoal.cumulative_actual_deficit?.toLocaleString() || '0'} cal
-              </p>
+              <p className="font-mono text-lg font-bold">{activeGoal.cumulative_actual_deficit?.toLocaleString() || '0'} cal</p>
             </div>
           </div>
 
-          {/* Progress Bar */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-pixel-sm">Progress</p>
               <p className="text-pixel-sm">{progressPercent.toFixed(1)}%</p>
             </div>
             <div className="progress-pixel">
-              <div 
-                className="progress-pixel-fill" 
-                style={{ 
-                  width: `${progressPercent}%`,
-                  backgroundColor: progressColor
-                }}
-              />
+              <div className="progress-pixel-fill" style={{ width: `${progressPercent}%`, backgroundColor: progressColor }} />
             </div>
           </div>
         </Card>
