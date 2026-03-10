@@ -106,11 +106,31 @@ export default function ProgressPage() {
         if (entryData.weight_kg) {
           setSelectedWeight(entryData.weight_kg);
         } else {
-          setSelectedWeight(0);
+          // No weight for this day — fetch last tracked weight
+          const { data: lastWeightEntry } = await supabase
+            .from('daily_entries')
+            .select('weight_kg')
+            .eq('user_id', userId)
+            .not('weight_kg', 'is', null)
+            .lt('date', date)
+            .order('date', { ascending: false })
+            .limit(1)
+            .single();
+          setSelectedWeight(lastWeightEntry?.weight_kg || 0);
         }
       } else {
         setDailyEntry(null);
-        setSelectedWeight(0);
+        // No entry at all — fetch last tracked weight
+        const { data: lastWeightEntry } = await supabase
+          .from('daily_entries')
+          .select('weight_kg')
+          .eq('user_id', userId)
+          .not('weight_kg', 'is', null)
+          .lt('date', date)
+          .order('date', { ascending: false })
+          .limit(1)
+          .single();
+        setSelectedWeight(lastWeightEntry?.weight_kg || 0);
       }
 
       // Load weight history (last 30 days)

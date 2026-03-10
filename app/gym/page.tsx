@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
+import { firePRConfetti } from '@/lib/prConfetti';
 import { User, GymLog, ExerciseLibrary } from '@/types';
 import {
   Dumbbell, Trash2, ChevronLeft, ChevronRight, X,
@@ -532,6 +533,25 @@ export default function GymPage() {
         setGymLogs(updated);
         setAllHistory(prev => [...prev, data]);
         await updateDailyTotals(user.id, updated, selectedDate);
+
+        // PR detection
+        if (weight > 0) {
+          const exerciseHistory = allHistory.filter(
+            l => l.exercise_name.trim().toLowerCase() === exerciseName.trim().toLowerCase()
+              && l.weight_kg
+          );
+          const previousBest = exerciseHistory.length > 0
+            ? Math.max(...exerciseHistory.map(l => parseFloat(String(l.weight_kg))))
+            : 0;
+          if (weight > previousBest) {
+            firePRConfetti();
+            toast(`New PR on ${exerciseName}! ${weight}kg`);
+            resetForm();
+            setShowAddModal(false);
+            return;
+          }
+        }
+
         toast('Exercise logged!');
       }
 
@@ -699,6 +719,16 @@ export default function GymPage() {
       progressSearch === '' || name.toLowerCase().includes(progressSearch.toLowerCase())
     );
 
+  const lastWeightMap = new Map<string, number>();
+  for (const log of allHistory) {
+    if (log.weight_kg) {
+      lastWeightMap.set(
+        log.exercise_name.trim().toLowerCase(),
+        parseFloat(String(log.weight_kg))
+      );
+    }
+  }
+
   if (loading) {
     return <div className="container-pixel"><p className="font-mono text-lg">Loading...</p></div>;
   }
@@ -847,37 +877,13 @@ export default function GymPage() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-5">
-          {logsByMuscle.map(({ group, logs }) => (
-            <Card key={group} title={group}>
-              <div className="space-y-3">
-                {logs.map(log => (
-                  <ExerciseRow key={log.id} log={log} onEdit={handleEdit} onDelete={handleDelete} />
-                ))}
-              </div>
-            </Card>
-          ))}
-
-          {cardioLogs.length > 0 && (
-            <Card title="Cardio">
-              <div className="space-y-3">
-                {cardioLogs.map(log => (
-                  <ExerciseRow key={log.id} log={log} onEdit={handleEdit} onDelete={handleDelete} />
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {unknownLogs.length > 0 && (
-            <Card title="Other">
-              <div className="space-y-3">
-                {unknownLogs.map(log => (
-                  <ExerciseRow key={log.id} log={log} onEdit={handleEdit} onDelete={handleDelete} />
-                ))}
-              </div>
-            </Card>
-          )}
-        </div>
+        <Card>
+          <div className="space-y-3">
+            {visibleLogs.map(log => (
+              <ExerciseRow key={log.id} log={log} onEdit={handleEdit} onDelete={handleDelete} />
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* ── Progress Section ── */}
@@ -1113,7 +1119,14 @@ export default function GymPage() {
                 className="w-full text-left p-4 border-2 border-darkgray hover:bg-accent/20 transition-all"
               >
                 <div className="flex justify-between items-start gap-3">
-                  <p className="font-mono font-bold text-sm">{exercise.exercise_name}</p>
+                  <div className="min-w-0">
+                    <p className="font-mono font-bold text-sm">{exercise.exercise_name}</p>
+                    {lastWeightMap.has(exercise.exercise_name.trim().toLowerCase()) && (
+                      <p className="font-mono text-xs text-darkgray/50 mt-0.5">
+                        Last: {lastWeightMap.get(exercise.exercise_name.trim().toLowerCase())} kg
+                      </p>
+                    )}
+                  </div>
                   <div className="flex-shrink-0">
                     <MuscleTags
                       groups={exercise.muscle_groups || []}
