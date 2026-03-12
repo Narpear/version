@@ -10,7 +10,7 @@ interface WeightDataPoint {
   displayDate: string;
 }
 
-type ViewMode = '30d' | 'weekly_year' | 'monthly_year' | 'monthly_all';
+type ViewMode = '30d' | '90d' | 'weekly_year' | 'monthly_year' | 'monthly_all';
 
 interface WeightChartProps {
   data: WeightDataPoint[];
@@ -19,6 +19,7 @@ interface WeightChartProps {
 
 const VIEW_LABELS: Record<ViewMode, string> = {
   '30d': 'Last 30 Days',
+  '90d': 'Last 90 Days',
   'weekly_year': 'Weekly (Last Year)',
   'monthly_year': 'Monthly (Last Year)',
   'monthly_all': 'Monthly (All Time)',
@@ -36,9 +37,9 @@ function getISOWeek(date: Date): string {
 function aggregateData(data: WeightDataPoint[], mode: ViewMode) {
   const now = new Date();
 
-  if (mode === '30d') {
+  if (mode === '30d' || mode === '90d') {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
+    cutoff.setDate(cutoff.getDate() - (mode === '90d' ? 90 : 30));
     return data
       .filter(d => new Date(d.date) >= cutoff)
       .map(d => ({ ...d, displayDate: d.displayDate }));
@@ -117,7 +118,7 @@ export default function WeightChart({ data, goal }: WeightChartProps) {
   const minWeight = Math.min(...chartData.map(d => d.weight)) - 1;
   const maxWeight = Math.max(...chartData.map(d => d.weight)) + 1;
 
-  const isAveraged = view !== '30d';
+  const isAveraged = view !== '30d' && view !== '90d';
 
   return (
     <div>
@@ -153,7 +154,7 @@ export default function WeightChart({ data, goal }: WeightChartProps) {
             <XAxis
               dataKey="displayDate"
               stroke="#4A4A4A"
-              style={{ fontSize: '12px', fontFamily: 'VT323, monospace' }}
+              tick={false}
               interval="preserveStartEnd"
             />
             <YAxis
