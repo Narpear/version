@@ -7,15 +7,33 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, FoodLog, FoodTemplate } from '@/types';
-import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit, Camera } from 'lucide-react';
+import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit, Camera, UtensilsCrossed } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 import dynamic from 'next/dynamic';
 
-// Dynamically import BarcodeScanner (client-side only)
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
   ssr: false,
 });
+
+// Types
+interface MealTemplate {
+  id: string;
+  user_id: string;
+  meal_name: string;
+  items: MealItem[];
+  created_at: string;
+}
+
+interface MealItem {
+  name: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fats_g: number;
+  is_healthy: boolean;
+  quantity: number;
+}
 
 // Modal Component
 function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
@@ -23,29 +41,15 @@ function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50" 
-        onClick={onClose}
-      />
-      
-      {/* Modal Content */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white border-4 border-darkgray max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-pixel">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
           <h2 className="heading-pixel text-xl">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
-          >
+          <button onClick={onClose} className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all">
             <X size={20} />
           </button>
         </div>
-        
-        {/* Body */}
-        <div className="p-6">
-          {children}
-        </div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );
@@ -58,10 +62,13 @@ export default function FoodPage() {
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [templates, setTemplates] = useState<FoodTemplate[]>([]);
   const [publicTemplates, setPublicTemplates] = useState<FoodTemplate[]>([]);
+  const [mealTemplates, setMealTemplates] = useState<MealTemplate[]>([]);
   const [templateTab, setTemplateTab] = useState<'saved' | 'general'>('saved');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [showMealsModal, setShowMealsModal] = useState(false);
+  const [showSaveMealModal, setShowSaveMealModal] = useState(false);
   const [editingFood, setEditingFood] = useState<FoodLog | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<FoodTemplate | null>(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
@@ -69,7 +76,15 @@ export default function FoodPage() {
   const [showSaveTemplateConfirm, setShowSaveTemplateConfirm] = useState(false);
   const [foodToSaveAsTemplate, setFoodToSaveAsTemplate] = useState<FoodLog | null>(null);
 
-  // Date state
+  // Meal review state
+  const [reviewMeal, setReviewMeal] = useState<MealTemplate | null>(null);
+  const [reviewItems, setReviewItems] = useState<(MealItem & { adjustedQty: number })[]>([]);
+  const [reviewMealType, setReviewMealType] = useState<'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack'>('breakfast');
+
+  // Save meal state
+  const [newMealName, setNewMealName] = useState('');
+  const [mealToSaveItems, setMealToSaveItems] = useState<FoodLog[]>([]);
+
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Form state
@@ -82,8 +97,8 @@ export default function FoodPage() {
   const [isHealthy, setIsHealthy] = useState(true);
   const [quantity, setQuantity] = useState(1);
 
-  // Search state for templates
   const [templateSearch, setTemplateSearch] = useState('');
+  const [mealSearch, setMealSearch] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
   const isToday = selectedDate === today;
@@ -94,11 +109,11 @@ export default function FoodPage() {
       router.push('/login');
       return;
     }
-    
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
     loadFoodData(parsedUser.id, selectedDate);
     loadTemplates(parsedUser.id);
+    loadMealTemplates(parsedUser.id);
   }, [router, selectedDate]);
 
   const loadFoodData = async (userId: string, date: string) => {
@@ -112,7 +127,6 @@ export default function FoodPage() {
 
       if (data) {
         setFoodLogs(data);
-        // Always update daily totals when data changes, regardless of date
         await updateDailyTotals(userId, data);
       }
     } catch (error) {
@@ -124,14 +138,12 @@ export default function FoodPage() {
 
   const loadTemplates = async (userId: string) => {
     try {
-      // Load user's personal templates
       const { data: userTemplates } = await supabase
         .from('food_templates')
         .select('*')
         .eq('user_id', userId)
         .order('template_name');
 
-      // Load ALL public templates by fetching in batches
       let allPublicTemplates: FoodTemplate[] = [];
       let from = 0;
       const batchSize = 1000;
@@ -145,7 +157,6 @@ export default function FoodPage() {
           .range(from, from + batchSize - 1);
 
         if (error) throw error;
-        
         if (data && data.length > 0) {
           allPublicTemplates = [...allPublicTemplates, ...data];
           from += batchSize;
@@ -162,6 +173,20 @@ export default function FoodPage() {
     }
   };
 
+  const loadMealTemplates = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('meal_templates')
+        .select('*')
+        .eq('user_id', userId)
+        .order('meal_name');
+
+      if (data) setMealTemplates(data);
+    } catch (error) {
+      console.log('Error loading meal templates');
+    }
+  };
+
   const updateDailyTotals = async (userId: string, logs: FoodLog[]) => {
     const totalCaloriesIn = logs.reduce((sum, log) => sum + log.calories, 0);
 
@@ -174,22 +199,20 @@ export default function FoodPage() {
         .single();
 
       if (existing) {
-        // Recalculate apparent deficit with new food data
         const bmr = existing.bmr || 0;
         const caloriesOut = existing.total_calories_out || 0;
         const netIntake = totalCaloriesIn - caloriesOut;
         const apparentDeficit = bmr > 0 ? bmr - netIntake : null;
-        
+
         await supabase
           .from('daily_entries')
-          .update({ 
+          .update({
             total_calories_in: totalCaloriesIn,
             net_intake: netIntake,
-            apparent_deficit: apparentDeficit
+            apparent_deficit: apparentDeficit,
           })
           .eq('id', existing.id);
-          
-        // Recalculate cumulative deficits for the goal
+
         await recalculateGoalCumulatives(userId);
       } else {
         await supabase
@@ -223,13 +246,11 @@ export default function FoodPage() {
   const handleAddFood = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || calories <= 0) return;
-    
-    // Validate quantity
+
     const finalQuantity = quantity > 0 ? quantity : 1;
 
     try {
       if (editingFood) {
-        // Update existing food log
         const { data, error } = await supabase
           .from('food_logs')
           .update({
@@ -240,6 +261,7 @@ export default function FoodPage() {
             carbs_g: carbs * finalQuantity,
             fats_g: fats * finalQuantity,
             is_healthy: isHealthy,
+            quantity: finalQuantity,
           })
           .eq('id', editingFood.id)
           .select()
@@ -252,7 +274,6 @@ export default function FoodPage() {
         await updateDailyTotals(user.id, updatedLogs);
         toast('Updated!');
       } else {
-        // Create new food log
         const { data, error } = await supabase
           .from('food_logs')
           .insert({
@@ -265,6 +286,7 @@ export default function FoodPage() {
             carbs_g: carbs * finalQuantity,
             fats_g: fats * finalQuantity,
             is_healthy: isHealthy,
+            quantity: finalQuantity,
           })
           .select()
           .single();
@@ -276,7 +298,7 @@ export default function FoodPage() {
         await updateDailyTotals(user.id, updatedLogs);
         toast('Saved!');
       }
-      
+
       resetForm();
       setShowAddModal(false);
       setEditingFood(null);
@@ -294,7 +316,6 @@ export default function FoodPage() {
 
     try {
       if (editingTemplate) {
-        // Update existing template
         await supabase
           .from('food_templates')
           .update({
@@ -307,10 +328,8 @@ export default function FoodPage() {
             is_healthy: isHealthy,
           })
           .eq('id', editingTemplate.id);
-
         toast('Template updated!');
       } else {
-        // Create new template
         await supabase
           .from('food_templates')
           .insert({
@@ -323,7 +342,6 @@ export default function FoodPage() {
             fats_g: fats,
             is_healthy: isHealthy,
           });
-
         toast('Template saved!');
       }
 
@@ -353,7 +371,7 @@ export default function FoodPage() {
         });
 
       toast('Saved as template!');
-      await loadTemplates(user.id);
+      await loadTemplates(user!.id);
       setShowSaveTemplateConfirm(false);
       setFoodToSaveAsTemplate(null);
     } catch (error) {
@@ -378,12 +396,14 @@ export default function FoodPage() {
   const handleEditFood = (food: FoodLog) => {
     setMealName(food.meal_name);
     setMealType(food.meal_type || 'breakfast');
-    setCalories(food.calories);
-    setProtein(food.protein_g);
-    setCarbs(food.carbs_g);
-    setFats(food.fats_g);
+    // Store per-serving values for editing
+    const qty = (food as any).quantity || 1;
+    setCalories(Math.round(food.calories / qty));
+    setProtein(parseFloat((food.protein_g / qty).toFixed(2)));
+    setCarbs(parseFloat((food.carbs_g / qty).toFixed(2)));
+    setFats(parseFloat((food.fats_g / qty).toFixed(2)));
     setIsHealthy(food.is_healthy);
-    setQuantity(1);
+    setQuantity(qty);
     setEditingFood(food);
     setShowAddModal(true);
   };
@@ -404,13 +424,8 @@ export default function FoodPage() {
 
   const handleDeleteTemplate = async (id: string) => {
     if (!confirm('Delete this template?')) return;
-
     try {
-      await supabase
-        .from('food_templates')
-        .delete()
-        .eq('id', id);
-
+      await supabase.from('food_templates').delete().eq('id', id);
       await loadTemplates(user!.id);
       toast('Template deleted');
     } catch (error) {
@@ -420,13 +435,8 @@ export default function FoodPage() {
 
   const handleDeleteFood = async (id: string) => {
     if (!user) return;
-    
     try {
-      await supabase
-        .from('food_logs')
-        .delete()
-        .eq('id', id);
-
+      await supabase.from('food_logs').delete().eq('id', id);
       const updatedLogs = foodLogs.filter(log => log.id !== id);
       setFoodLogs(updatedLogs);
       await updateDailyTotals(user.id, updatedLogs);
@@ -437,42 +447,109 @@ export default function FoodPage() {
     }
   };
 
+  // --- MEALS ---
+
+  const openReviewMeal = (meal: MealTemplate) => {
+    setReviewMeal(meal);
+    setReviewItems(meal.items.map(item => ({ ...item, adjustedQty: item.quantity })));
+    setReviewMealType('breakfast');
+    setShowMealsModal(false);
+  };
+
+  const handleLogMeal = async () => {
+    if (!user || !reviewMeal) return;
+
+    try {
+      const inserts = reviewItems
+        .filter(item => item.adjustedQty > 0)
+        .map(item => ({
+          user_id: user.id,
+          date: selectedDate,
+          meal_name: item.name,
+          meal_type: reviewMealType,
+          calories: Math.round(item.calories * item.adjustedQty),
+          protein_g: parseFloat((item.protein_g * item.adjustedQty).toFixed(2)),
+          carbs_g: parseFloat((item.carbs_g * item.adjustedQty).toFixed(2)),
+          fats_g: parseFloat((item.fats_g * item.adjustedQty).toFixed(2)),
+          is_healthy: item.is_healthy,
+          quantity: item.adjustedQty,
+        }));
+
+      const { data, error } = await supabase
+        .from('food_logs')
+        .insert(inserts)
+        .select();
+
+      if (error) throw error;
+
+      const updatedLogs = [...foodLogs, ...(data || [])];
+      setFoodLogs(updatedLogs);
+      await updateDailyTotals(user.id, updatedLogs);
+      toast(`Logged ${reviewMeal.meal_name}!`);
+      setReviewMeal(null);
+      setReviewItems([]);
+    } catch (error) {
+      console.error('Error logging meal:', error);
+      alert('Failed to log meal');
+    }
+  };
+
+  const handleOpenSaveMeal = (logs: FoodLog[]) => {
+    setMealToSaveItems(logs);
+    setNewMealName('');
+    setShowSaveMealModal(true);
+  };
+
+  const handleSaveMeal = async () => {
+    if (!user || !newMealName.trim()) return;
+
+    const items: MealItem[] = mealToSaveItems.map(log => {
+      const qty = (log as any).quantity || 1;
+      return {
+        name: log.meal_name,
+        calories: Math.round(log.calories / qty),
+        protein_g: parseFloat((log.protein_g / qty).toFixed(2)),
+        carbs_g: parseFloat((log.carbs_g / qty).toFixed(2)),
+        fats_g: parseFloat((log.fats_g / qty).toFixed(2)),
+        is_healthy: log.is_healthy,
+        quantity: qty,
+      };
+    });
+
+    try {
+      await supabase.from('meal_templates').insert({
+        user_id: user.id,
+        meal_name: newMealName.trim(),
+        items,
+      });
+
+      toast('Meal saved!');
+      await loadMealTemplates(user.id);
+      setShowSaveMealModal(false);
+      setNewMealName('');
+      setMealToSaveItems([]);
+    } catch (error) {
+      console.error('Error saving meal:', error);
+      alert('Failed to save meal');
+    }
+  };
+
+  const handleDeleteMeal = async (id: string) => {
+    if (!confirm('Delete this meal?')) return;
+    try {
+      await supabase.from('meal_templates').delete().eq('id', id);
+      await loadMealTemplates(user!.id);
+      toast('Meal deleted');
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+    }
+  };
+
   const changeDate = (days: number) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
     setSelectedDate(newDate.toISOString().split('T')[0]);
   };
-
-  // Filter templates based on search (partial match on multiple fields)
-  const filteredTemplates = templates.filter(template => {
-    const searchLower = templateSearch.toLowerCase();
-    const nameLower = template.template_name.toLowerCase();
-    const mealTypeLower = (template.meal_type || '').toLowerCase();
-    
-    // Check if any part of the search term appears in name or meal type
-    return nameLower.includes(searchLower) || 
-           mealTypeLower.includes(searchLower) ||
-           template.calories.toString().includes(searchLower);
-  });
-
-  // Filter public templates based on search
-  const filteredPublicTemplates = publicTemplates.filter(template => {
-    const searchLower = templateSearch.toLowerCase();
-    const nameLower = template.template_name.toLowerCase();
-    const mealTypeLower = (template.meal_type || '').toLowerCase();
-    
-    return nameLower.includes(searchLower) || 
-           mealTypeLower.includes(searchLower) ||
-           template.calories.toString().includes(searchLower);
-  });
-
-  if (loading) {
-    return (
-      <div className="container-pixel">
-        <p className="font-mono text-lg">Loading...</p>
-      </div>
-    );
-  }
 
   const fetchProductData = async (barcode: string) => {
     setFetchingProduct(true);
@@ -485,42 +562,34 @@ export default function FoodPage() {
       if (data.status === 1 && data.product) {
         const product = data.product;
         const nutriments = product.nutriments;
-
-        // Try to get serving size
-        const servingSize = product.serving_quantity || 100; // Default to 100g if no serving size
+        const servingSize = product.serving_quantity || 100;
         const servingSizeUnit = product.serving_quantity_unit || 'g';
-        
-        // Prefer per-serving data if available, otherwise use per-100g
-        let calories, protein, carbs, fats;
-        
+
+        let cal, prot, carb, fat;
+
         if (nutriments['energy-kcal_serving']) {
-          // Per-serving data is available
-          calories = Math.round(nutriments['energy-kcal_serving'] || 0);
-          protein = parseFloat((nutriments.proteins_serving || 0).toFixed(1));
-          carbs = parseFloat((nutriments.carbohydrates_serving || 0).toFixed(1));
-          fats = parseFloat((nutriments.fat_serving || 0).toFixed(1));
+          cal = Math.round(nutriments['energy-kcal_serving'] || 0);
+          prot = parseFloat((nutriments.proteins_serving || 0).toFixed(1));
+          carb = parseFloat((nutriments.carbohydrates_serving || 0).toFixed(1));
+          fat = parseFloat((nutriments.fat_serving || 0).toFixed(1));
         } else {
-          // Fall back to per-100g data
-          calories = Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0);
-          protein = parseFloat((nutriments.proteins_100g || nutriments.proteins || 0).toFixed(1));
-          carbs = parseFloat((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0).toFixed(1));
-          fats = parseFloat((nutriments.fat_100g || nutriments.fat || 0).toFixed(1));
+          cal = Math.round(nutriments['energy-kcal_100g'] || nutriments['energy-kcal'] || 0);
+          prot = parseFloat((nutriments.proteins_100g || nutriments.proteins || 0).toFixed(1));
+          carb = parseFloat((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0).toFixed(1));
+          fat = parseFloat((nutriments.fat_100g || nutriments.fat || 0).toFixed(1));
         }
 
-        // Auto-fill the form
         setMealName(product.product_name || 'Unknown Product');
-        setCalories(calories);
-        setProtein(protein);
-        setCarbs(carbs);
-        setFats(fats);
-        setQuantity(1); // Default to 1 serving
+        setCalories(cal);
+        setProtein(prot);
+        setCarbs(carb);
+        setFats(fat);
+        setQuantity(1);
         setShowAddModal(true);
 
-        // Show helpful message with serving size info
-        const servingInfo = nutriments['energy-kcal_serving'] 
+        const servingInfo = nutriments['energy-kcal_serving']
           ? `per serving (${servingSize}${servingSizeUnit})`
           : `per 100g`;
-        
         toast(`Product found! Values are ${servingInfo}. Adjust quantity as needed.`);
       } else {
         alert('Product not found in database. Please enter manually.');
@@ -533,19 +602,51 @@ export default function FoodPage() {
     }
   };
 
-  // Calculate totals
+  // Filtered templates
+  const filteredTemplates = templates.filter(t => {
+    const s = templateSearch.toLowerCase();
+    return t.template_name.toLowerCase().includes(s) ||
+      (t.meal_type || '').toLowerCase().includes(s) ||
+      t.calories.toString().includes(s);
+  });
+
+  const filteredPublicTemplates = publicTemplates.filter(t => {
+    const s = templateSearch.toLowerCase();
+    return t.template_name.toLowerCase().includes(s) ||
+      (t.meal_type || '').toLowerCase().includes(s) ||
+      t.calories.toString().includes(s);
+  });
+
+  const filteredMeals = mealTemplates.filter(m =>
+    m.meal_name.toLowerCase().includes(mealSearch.toLowerCase())
+  );
+
+  // Totals
   const totalCalories = foodLogs.reduce((sum, log) => sum + log.calories, 0);
   const totalProtein = foodLogs.reduce((sum, log) => sum + log.protein_g, 0);
   const totalCarbs = foodLogs.reduce((sum, log) => sum + log.carbs_g, 0);
   const totalFats = foodLogs.reduce((sum, log) => sum + log.fats_g, 0);
   const healthyMeals = foodLogs.filter(log => log.is_healthy).length;
 
-  // Group by meal type
   const mealTypes = ['breakfast', 'brunch', 'lunch', 'dinner', 'snack'] as const;
   const groupedMeals = mealTypes.map(type => ({
     type,
     meals: foodLogs.filter(log => log.meal_type === type),
   }));
+
+  // Review meal totals
+  const reviewTotalCals = reviewItems.reduce((sum, item) => sum + item.calories * item.adjustedQty, 0);
+  const reviewTotalProtein = reviewItems.reduce((sum, item) => sum + item.protein_g * item.adjustedQty, 0);
+  const reviewTotalCarbs = reviewItems.reduce((sum, item) => sum + item.carbs_g * item.adjustedQty, 0);
+  const reviewTotalFats = reviewItems.reduce((sum, item) => sum + item.fats_g * item.adjustedQty, 0);
+
+  if (loading) {
+    return (
+      <div className="container-pixel">
+        <p className="font-mono text-lg">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container-pixel">
@@ -568,8 +669,8 @@ export default function FoodPage() {
               className="text-pixel-xs border-2 border-darkgray p-1 mt-1"
             />
           </div>
-          <button 
-            onClick={() => changeDate(1)} 
+          <button
+            onClick={() => changeDate(1)}
             disabled={isToday}
             className={`p-2 border-2 border-darkgray ${isToday ? 'bg-gray-200 cursor-not-allowed' : 'bg-white hover:bg-lavender'}`}
           >
@@ -582,6 +683,10 @@ export default function FoodPage() {
       <div className="flex gap-4 mb-6">
         <Button onClick={() => setShowAddModal(true)}>
           + Add Food
+        </Button>
+        <Button onClick={() => setShowMealsModal(true)} variant="secondary">
+          <UtensilsCrossed size={16} className="inline mr-2" />
+          My Meals ({mealTemplates.length})
         </Button>
       </div>
 
@@ -614,55 +719,72 @@ export default function FoodPage() {
       {/* Meals by Type */}
       {groupedMeals.map(({ type, meals }) => (
         meals.length > 0 && (
-          <Card key={type} title={`${type.charAt(0).toUpperCase() + type.slice(1)}`} className="mb-6">
+          <Card key={type} className="mb-6">
+            {/* Card header with Save as Meal button */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="heading-pixel text-lg">{type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+              <button
+                onClick={() => handleOpenSaveMeal(meals)}
+                className="flex items-center gap-1 px-3 py-1 border-2 border-darkgray bg-secondary/30 hover:bg-secondary/60 transition-all font-mono text-xs"
+                title="Save these items as a meal"
+              >
+                <Save size={12} />
+                Save as Meal
+              </button>
+            </div>
+
             <div className="space-y-3">
-              {meals.map((meal) => (
-                <div
-                  key={meal.id}
-                  className={`p-4 border-2 border-darkgray ${
-                    meal.is_healthy ? 'bg-success/20' : 'bg-warning/20'
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className="font-mono text-lg font-bold">{meal.meal_name}</p>
-                        {meal.is_healthy && <span className="text-sm">✓ Healthy</span>}
+              {meals.map((meal) => {
+                const qty = (meal as any).quantity;
+                const showQty = qty && qty !== 1;
+                return (
+                  <div
+                    key={meal.id}
+                    className={`p-4 border-2 border-darkgray ${meal.is_healthy ? 'bg-success/20' : 'bg-warning/20'}`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <p className="font-mono text-lg font-bold">{meal.meal_name}</p>
+                          {showQty && (
+                            <span className="font-mono text-sm text-darkgray/50">
+                              ×{qty}
+                            </span>
+                          )}
+                          {meal.is_healthy && <span className="text-sm">✓ Healthy</span>}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
+                          <p>{meal.calories} cal</p>
+                          {meal.protein_g > 0 && <p>{meal.protein_g}g protein</p>}
+                          {meal.carbs_g > 0 && <p>{meal.carbs_g}g carbs</p>}
+                          {meal.fats_g > 0 && <p>{meal.fats_g}g fats</p>}
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
-                        <p>{meal.calories} cal</p>
-                        {meal.protein_g > 0 && <p>{meal.protein_g}g protein</p>}
-                        {meal.carbs_g > 0 && <p>{meal.carbs_g}g carbs</p>}
-                        {meal.fats_g > 0 && <p>{meal.fats_g}g fats</p>}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { setFoodToSaveAsTemplate(meal); setShowSaveTemplateConfirm(true); }}
+                          className="p-2 border-2 border-darkgray bg-secondary hover:bg-secondary/70 transition-all"
+                          title="Save as template"
+                        >
+                          <Star size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleEditFood(meal)}
+                          className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70 transition-all"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFood(meal.id)}
+                          className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setFoodToSaveAsTemplate(meal);
-                          setShowSaveTemplateConfirm(true);
-                        }}
-                        className="p-2 border-2 border-darkgray bg-secondary hover:bg-secondary/70 transition-all"
-                        title="Save as template"
-                      >
-                        <Star size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleEditFood(meal)}
-                        className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70 transition-all"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFood(meal.id)}
-                        className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         )
@@ -678,12 +800,15 @@ export default function FoodPage() {
         </Card>
       )}
 
-      {/* Add Food Modal */}
-      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); resetForm(); }} title={editingFood ? "Edit Food" : editingTemplate ? "Edit Template" : "Add Food"}>
-        {/* Buttons to open templates and barcode scanner */}
+      {/* ── Add Food Modal ── */}
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => { setShowAddModal(false); resetForm(); }}
+        title={editingFood ? "Edit Food" : editingTemplate ? "Edit Template" : "Add Food"}
+      >
         {!editingFood && !editingTemplate && (
           <div className="mb-6 space-y-3">
-            <Button 
+            <Button
               onClick={() => setShowBarcodeScanner(true)}
               variant="primary"
               className="w-full"
@@ -692,22 +817,18 @@ export default function FoodPage() {
               <Camera size={20} className="inline mr-2" />
               {fetchingProduct ? 'Loading...' : 'Scan Barcode'}
             </Button>
-            
-            {(
-              <Button 
-                onClick={() => { setShowTemplatesModal(true); }} 
-                variant="secondary"
-                className="w-full"
-              >
-                <Star size={16} className="inline mr-2" />
-                Browse Templates ({templates.length})
-              </Button>
-            )}
+            <Button
+              onClick={() => setShowTemplatesModal(true)}
+              variant="secondary"
+              className="w-full"
+            >
+              <Star size={16} className="inline mr-2" />
+              Browse Templates ({templates.length})
+            </Button>
           </div>
         )}
 
-        <hr></hr>
-        <br></br>
+        <hr /><br />
 
         <form onSubmit={handleAddFood}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -758,9 +879,7 @@ export default function FoodPage() {
                   setQuantity(0);
                 } else {
                   const parsed = parseFloat(val);
-                  if (!isNaN(parsed)) {
-                    setQuantity(parsed);
-                  }
+                  if (!isNaN(parsed)) setQuantity(parsed);
                 }
               }}
               placeholder="1"
@@ -799,7 +918,6 @@ export default function FoodPage() {
             />
           </div>
 
-          {/* Show calculated totals if quantity != 1 */}
           {quantity !== 1 && quantity > 0 && (
             <div className="mt-4 p-3 border-2 border-darkgray bg-accent/20">
               <p className="font-mono text-sm font-bold mb-2">Total for {quantity} serving(s):</p>
@@ -844,72 +962,56 @@ export default function FoodPage() {
         </form>
       </Modal>
 
-      {/* Templates Modal */}
-      <Modal isOpen={showTemplatesModal} onClose={() => { setShowTemplatesModal(false); setTemplateSearch(''); }} title="Food Templates">
-        {/* Tab Switcher */}
+      {/* ── Templates Modal ── */}
+      <Modal
+        isOpen={showTemplatesModal}
+        onClose={() => { setShowTemplatesModal(false); setTemplateSearch(''); }}
+        title="Food Templates"
+      >
         <div className="flex gap-2 mb-4 border-b-2 border-darkgray">
           <button
             onClick={() => setTemplateTab('saved')}
-            className={`px-4 py-2 font-mono transition-all ${
-              templateTab === 'saved' 
-                ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' 
-                : 'bg-white hover:bg-accent/30'
-            }`}
+            className={`px-4 py-2 font-mono transition-all ${templateTab === 'saved' ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' : 'bg-white hover:bg-accent/30'}`}
           >
             My Foods ({templates.length})
           </button>
           <button
             onClick={() => setTemplateTab('general')}
-            className={`px-4 py-2 font-mono transition-all ${
-              templateTab === 'general' 
-                ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' 
-                : 'bg-white hover:bg-accent/30'
-            }`}
+            className={`px-4 py-2 font-mono transition-all ${templateTab === 'general' ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' : 'bg-white hover:bg-accent/30'}`}
           >
             General
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <input
-              type="text"
-              value={templateSearch}
-              onChange={(e) => setTemplateSearch(e.target.value)}
-              placeholder="Search templates..."
-              className="input-pixel w-full pr-10"
-            />
-            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-darkgray/50 pointer-events-none" size={20} />
-          </div>
+        <div className="mb-4 relative">
+          <input
+            type="text"
+            value={templateSearch}
+            onChange={(e) => setTemplateSearch(e.target.value)}
+            placeholder="Search templates..."
+            className="input-pixel w-full pr-10"
+          />
+          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-darkgray/50 pointer-events-none" size={20} />
         </div>
 
-        {/* Scrollable Template List */}
         <div className="max-h-96 overflow-y-auto pr-2">
           {templateTab === 'saved' ? (
-            // User's saved templates
             filteredTemplates.length === 0 ? (
               <p className="font-mono text-sm text-darkgray/70 text-center py-4">
-                {templateSearch ? 'No templates found matching your search' : 'No templates saved yet. Add food and click "Save as Template"'}
+                {templateSearch ? 'No templates found' : 'No templates saved yet.'}
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-3">
                 {filteredTemplates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="p-4 border-2 border-darkgray bg-accent/20 hover:bg-accent/30 transition-all"
-                  >
+                  <div key={template.id} className="p-4 border-2 border-darkgray bg-accent/20 hover:bg-accent/30 transition-all">
                     <div className="flex justify-between items-start gap-3">
-                      <div 
-                        className="flex-1 cursor-pointer" 
-                        onClick={() => handleUseTemplate(template)}
-                      >
+                      <div className="flex-1 cursor-pointer" onClick={() => handleUseTemplate(template)}>
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-mono text-base font-bold">{template.template_name}</p>
                           {template.is_healthy && <span className="text-xs">✓</span>}
                         </div>
                         <p className="text-pixel-xs text-darkgray/70 mb-1">
-                          {template.meal_type && `${template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}`}
+                          {template.meal_type && template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}
                         </p>
                         <div className="grid grid-cols-2 gap-2 font-mono text-xs">
                           <p>{template.calories} cal</p>
@@ -919,16 +1021,10 @@ export default function FoodPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditTemplate(template)}
-                          className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70"
-                        >
+                        <button onClick={() => handleEditTemplate(template)} className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70">
                           <Edit size={14} />
                         </button>
-                        <button
-                          onClick={() => handleDeleteTemplate(template.id)}
-                          className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
-                        >
+                        <button onClick={() => handleDeleteTemplate(template.id)} className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -938,11 +1034,8 @@ export default function FoodPage() {
               </div>
             )
           ) : (
-            // Public/General templates
             filteredPublicTemplates.length === 0 ? (
-              <p className="font-mono text-sm text-darkgray/70 text-center py-4">
-                No general templates found matching your search
-              </p>
+              <p className="font-mono text-sm text-darkgray/70 text-center py-4">No general templates found</p>
             ) : (
               <div className="grid grid-cols-1 gap-3">
                 {filteredPublicTemplates.map((template) => (
@@ -956,7 +1049,7 @@ export default function FoodPage() {
                       {template.is_healthy && <span className="text-xs">✓</span>}
                     </div>
                     <p className="text-pixel-xs text-darkgray/70 mb-1">
-                      {template.meal_type && `${template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}`}
+                      {template.meal_type && template.meal_type.charAt(0).toUpperCase() + template.meal_type.slice(1)}
                     </p>
                     <div className="grid grid-cols-2 gap-2 font-mono text-xs">
                       <p>{template.calories} cal</p>
@@ -972,13 +1065,203 @@ export default function FoodPage() {
         </div>
       </Modal>
 
-      {/* Save as Template Confirmation Modal */}
-      <Modal 
-        isOpen={showSaveTemplateConfirm} 
-        onClose={() => {
-          setShowSaveTemplateConfirm(false);
-          setFoodToSaveAsTemplate(null);
-        }} 
+      {/* ── Meals Modal ── */}
+      <Modal
+        isOpen={showMealsModal}
+        onClose={() => { setShowMealsModal(false); setMealSearch(''); }}
+        title="My Meals"
+      >
+        <div className="mb-4 relative">
+          <input
+            type="text"
+            value={mealSearch}
+            onChange={(e) => setMealSearch(e.target.value)}
+            placeholder="Search meals..."
+            className="input-pixel w-full pr-10"
+          />
+          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-darkgray/50 pointer-events-none" size={20} />
+        </div>
+
+        {filteredMeals.length === 0 ? (
+          <div className="text-center py-8">
+            <UtensilsCrossed size={40} className="mx-auto mb-3 text-darkgray/30" />
+            <p className="font-mono text-sm text-darkgray/70">
+              {mealSearch ? 'No meals found' : 'No meals saved yet. Use "Save as Meal" on any meal group!'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {filteredMeals.map((meal) => {
+              const totalCal = meal.items.reduce((s, i) => s + i.calories * i.quantity, 0);
+              return (
+                <div key={meal.id} className="p-4 border-2 border-darkgray bg-lavender/20 hover:bg-lavender/30 transition-all">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1">
+                      <p className="font-mono text-base font-bold mb-1">{meal.meal_name}</p>
+                      <p className="font-mono text-xs text-darkgray/60 mb-2">
+                        {meal.items.length} item{meal.items.length !== 1 ? 's' : ''} · ~{Math.round(totalCal)} cal
+                      </p>
+                      <div className="space-y-1">
+                        {meal.items.map((item, idx) => (
+                          <p key={idx} className="font-mono text-xs text-darkgray/70">
+                            • {item.name} {item.quantity !== 1 && <span className="text-darkgray/50">×{item.quantity}</span>}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => openReviewMeal(meal)} className="text-xs px-3 py-1 whitespace-nowrap">
+                        Use Meal
+                      </Button>
+                      <button
+                        onClick={() => handleDeleteMeal(meal.id)}
+                        className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Review & Adjust Meal Modal ── */}
+      <Modal
+        isOpen={!!reviewMeal}
+        onClose={() => { setReviewMeal(null); setReviewItems([]); }}
+        title={`Log: ${reviewMeal?.meal_name || ''}`}
+      >
+        {/* Meal type selector */}
+        <div className="mb-5">
+          <label className="block text-pixel-sm mb-2">Log as</label>
+          <select
+            value={reviewMealType}
+            onChange={(e) => setReviewMealType(e.target.value as any)}
+            className="input-pixel w-full"
+          >
+            <option value="breakfast">Breakfast</option>
+            <option value="brunch">Brunch</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+          </select>
+        </div>
+
+        {/* Items */}
+        <div className="space-y-3 mb-5">
+          {reviewItems.map((item, idx) => (
+            <div key={idx} className="p-3 border-2 border-darkgray bg-accent/10">
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex-1">
+                  <p className="font-mono text-sm font-bold">{item.name}</p>
+                  <p className="font-mono text-xs text-darkgray/60">
+                    {item.calories} cal/serving
+                    {item.protein_g > 0 && ` · ${item.protein_g}g protein`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="font-mono text-xs text-darkgray/60">qty</label>
+                  <input
+                    type="number"
+                    value={item.adjustedQty === 0 ? '' : item.adjustedQty}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      setReviewItems(prev => prev.map((it, i) =>
+                        i === idx ? { ...it, adjustedQty: isNaN(val) ? 0 : val } : it
+                      ));
+                    }}
+                    step={0.5}
+                    min={0}
+                    className="input-pixel w-20 text-center"
+                  />
+                </div>
+                <div className="text-right min-w-[60px]">
+                  <p className="font-mono text-sm font-bold">
+                    {Math.round(item.calories * (item.adjustedQty || 0))} cal
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Live totals */}
+        <div className="p-3 border-2 border-darkgray bg-success/20 mb-5">
+          <p className="font-mono text-sm font-bold mb-2">Total</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
+            <p className="font-bold">{Math.round(reviewTotalCals)} cal</p>
+            {reviewTotalProtein > 0 && <p>{reviewTotalProtein.toFixed(1)}g protein</p>}
+            {reviewTotalCarbs > 0 && <p>{reviewTotalCarbs.toFixed(1)}g carbs</p>}
+            {reviewTotalFats > 0 && <p>{reviewTotalFats.toFixed(1)}g fats</p>}
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <Button onClick={handleLogMeal} className="flex-1">
+            Log All
+          </Button>
+          <Button
+            onClick={() => { setReviewMeal(null); setReviewItems([]); }}
+            variant="secondary"
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ── Save as Meal Modal ── */}
+      <Modal
+        isOpen={showSaveMealModal}
+        onClose={() => { setShowSaveMealModal(false); setNewMealName(''); setMealToSaveItems([]); }}
+        title="Save as Meal"
+      >
+        <p className="font-mono text-sm text-darkgray/70 mb-4">
+          Saving {mealToSaveItems.length} item(s) as a reusable meal template.
+        </p>
+
+        <div className="space-y-2 mb-5 max-h-40 overflow-y-auto">
+          {mealToSaveItems.map((log, idx) => {
+            const qty = (log as any).quantity || 1;
+            return (
+              <div key={idx} className="flex justify-between font-mono text-xs p-2 border border-darkgray/30 bg-accent/10">
+                <span>{log.meal_name} {qty !== 1 && <span className="text-darkgray/50">×{qty}</span>}</span>
+                <span className="text-darkgray/60">{log.calories} cal</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <Input
+          type="text"
+          label="Meal Name"
+          value={newMealName}
+          onChange={(e) => setNewMealName(e.target.value)}
+          placeholder="e.g., My Usual Breakfast"
+        />
+
+        <div className="flex gap-4 mt-5">
+          <Button onClick={handleSaveMeal} className="flex-1" disabled={!newMealName.trim()}>
+            <Save size={16} className="inline mr-2" />
+            Save Meal
+          </Button>
+          <Button
+            onClick={() => { setShowSaveMealModal(false); setNewMealName(''); setMealToSaveItems([]); }}
+            variant="secondary"
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ── Save as Template Confirmation ── */}
+      <Modal
+        isOpen={showSaveTemplateConfirm}
+        onClose={() => { setShowSaveTemplateConfirm(false); setFoodToSaveAsTemplate(null); }}
         title="Save as Template?"
       >
         {foodToSaveAsTemplate && (
@@ -995,18 +1278,12 @@ export default function FoodPage() {
               </div>
             </div>
             <div className="flex gap-4">
-              <Button 
-                onClick={handleSaveFoodAsTemplate}
-                className="flex-1"
-              >
+              <Button onClick={handleSaveFoodAsTemplate} className="flex-1">
                 <Star size={16} className="inline mr-2" />
                 Save Template
               </Button>
-              <Button 
-                onClick={() => {
-                  setShowSaveTemplateConfirm(false);
-                  setFoodToSaveAsTemplate(null);
-                }}
+              <Button
+                onClick={() => { setShowSaveTemplateConfirm(false); setFoodToSaveAsTemplate(null); }}
                 variant="secondary"
                 className="flex-1"
               >

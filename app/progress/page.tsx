@@ -133,16 +133,12 @@ export default function ProgressPage() {
         setSelectedWeight(lastWeightEntry?.weight_kg || 0);
       }
 
-      // Load weight history (last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+      // Load ALL weight history
       const { data: historyData } = await supabase
         .from('daily_entries')
         .select('date, weight_kg')
         .eq('user_id', userId)
         .not('weight_kg', 'is', null)
-        .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
         .order('date', { ascending: true });
 
       if (historyData) {
@@ -635,7 +631,7 @@ export default function ProgressPage() {
 
       {/* Weight Chart */}
       {weightHistory.length > 0 && (
-        <Card title="Weight Progress (Last 30 Days)" className="mb-6">
+        <Card title="Progress" className="mb-6">
           <WeightChart data={weightHistory} goal={activeGoal} />
         </Card>
       )}

@@ -15,7 +15,7 @@ const Section = ({
   <div className="border-2 border-darkgray p-5 mb-4" style={{ backgroundColor: 'var(--color-surface)' }}>
     <div className="flex items-center gap-3 mb-3">
       <div
-        className="w-9 h-9 flex items-center justify-center border-2 border-darkgray flex-shrink-0"
+        className="w-9 h-9 flex items-center justify-center border-2 border-darkgray shrink-0"
         style={{ backgroundColor: color }}
       >
         <Icon size={18} />
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
           <span className="text-pixel-xs">A NOTE FROM THE DEVELOPER</span>
         </div>
         <div className="flex gap-3 mt-1 items-start">
-          <Heart size={20} className="flex-shrink-0 mt-0.5" />
+          <Heart size={20} className="shrink-0 mt-0.5" />
           <p className="font-mono text-sm leading-relaxed">
             I built this app for myself and use it every single day. I'm sharing it with friends because I think it's genuinely useful — not to build a business. Your data is safe, private, and will never be used against you. That's a promise.
           </p>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
             'Any data beyond what you explicitly enter into the app',
           ].map((item) => (
             <div key={item} className="flex gap-2 items-start">
-              <span className="flex-shrink-0">✗</span>
+              <span className="shrink-0">✗</span>
               <span>{item}</span>
             </div>
           ))}
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
             { name: 'Google Fonts', desc: 'Loads the pixel fonts used in the UI (Press Start 2P and VT323)' },
           ].map(({ name, desc }) => (
             <div key={name} className="flex gap-2 items-start">
-              <span className="font-bold flex-shrink-0">▸ {name}:</span>
+              <span className="font-bold shrink-0">▸ {name}:</span>
               <span style={{ opacity: 0.7 }}>{desc}</span>
             </div>
           ))}
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
             "Ask any questions about what's stored and why",
           ].map((item) => (
             <div key={item} className="flex gap-2 items-start">
-              <span className="flex-shrink-0">✓</span>
+              <span className="shrink-0">✓</span>
               <span>{item}</span>
             </div>
           ))}
