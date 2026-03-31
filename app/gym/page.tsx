@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { firePRConfetti } from '@/lib/prConfetti';
-import { User, GymLog, ExerciseLibrary } from '@/types';
+import { User, GymLog, GymLogSet, ExerciseLibrary } from '@/types';
 import {
   Dumbbell, Trash2, ChevronLeft, ChevronRight, X,
   Search, Edit, Flame, Zap, Plus, BookOpen, ChevronDown, TrendingUp
@@ -49,6 +49,12 @@ const MUSCLE_COLORS: Record<string, string> = {
 };
 
 const FALLBACK_COLOR = 'bg-gray-100 border-gray-300 text-gray-800';
+
+interface SetEntry {
+  weight_kg: number;
+  reps: number;
+  notes: string;
+}
 
 function Modal({ isOpen, onClose, title, children }: {
   isOpen: boolean;
@@ -98,6 +104,10 @@ function ExerciseRow({ log, onEdit, onDelete }: {
   onEdit: (log: GymLog) => void;
   onDelete: (id: string) => void;
 }) {
+  const sortedSets = log.gym_log_sets && log.gym_log_sets.length > 0
+    ? [...log.gym_log_sets].sort((a, b) => a.set_number - b.set_number)
+    : null;
+
   return (
     <div className="p-4 border-2 border-darkgray bg-white hover:bg-secondary/10 transition-all">
       <div className="flex justify-between items-start gap-3">
@@ -106,9 +116,28 @@ function ExerciseRow({ log, onEdit, onDelete }: {
           <div className="mb-2">
             <MuscleTags groups={log.muscle_groups || []} isCardio={log.is_cardio || false} />
           </div>
-          <div className="flex flex-wrap gap-4 font-mono text-sm text-darkgray/70">
-            {log.sets && log.reps ? <span>{log.sets} sets × {log.reps} reps</span> : null}
-            {log.weight_kg ? <span>{log.weight_kg} kg</span> : null}
+
+          {/* Per-set breakdown (new data) */}
+          {sortedSets ? (
+            <div className="mt-2 space-y-1">
+              {sortedSets.map((s, i) => (
+                <div key={s.id || i} className="flex items-center gap-3 font-mono text-sm text-darkgray/70">
+                  <span className="text-xs text-darkgray/40 w-10 flex-shrink-0">Set {s.set_number}</span>
+                  {s.weight_kg ? <span>{s.weight_kg} kg</span> : null}
+                  {s.reps ? <span>× {s.reps} reps</span> : null}
+                  {s.notes ? <span className="text-xs text-darkgray/40 italic truncate">— {s.notes}</span> : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* Backward compat: old single-row format */
+            <div className="flex flex-wrap gap-4 font-mono text-sm text-darkgray/70">
+              {log.sets && log.reps ? <span>{log.sets} sets × {log.reps} reps</span> : null}
+              {log.weight_kg ? <span>{log.weight_kg} kg</span> : null}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-4 font-mono text-sm text-darkgray/70 mt-1">
             {log.calories_burned > 0 && (
               <span className="flex items-center gap-1">
                 <Flame size={12} className="text-orange-400" />
@@ -346,9 +375,7 @@ export default function GymPage() {
   const [exerciseName, setExerciseName] = useState('');
   const [muscleGroups, setMuscleGroups] = useState<string[]>([]);
   const [isCardio, setIsCardio] = useState(false);
-  const [sets, setSets] = useState(0);
-  const [reps, setReps] = useState(0);
-  const [weight, setWeight] = useState(0);
+  const [exerciseSets, setExerciseSets] = useState<SetEntry[]>([{ weight_kg: 0, reps: 0, notes: '' }]);
   const [caloriesBurned, setCaloriesBurned] = useState(0);
   const [notes, setNotes] = useState('');
   const [warmupDone, setWarmupDone] = useState(false);
@@ -395,7 +422,7 @@ export default function GymPage() {
     try {
       const { data } = await supabase
         .from('gym_logs')
-        .select('*')
+        .select('*, gym_log_sets(*)')
         .eq('user_id', userId)
         .eq('date', date)
         .order('created_at', { ascending: true });
@@ -471,9 +498,7 @@ export default function GymPage() {
     setExerciseName('');
     setMuscleGroups([]);
     setIsCardio(false);
-    setSets(0);
-    setReps(0);
-    setWeight(0);
+    setExerciseSets([{ weight_kg: 0, reps: 0, notes: '' }]);
     setCaloriesBurned(0);
     setNotes('');
     setMuscleInput('');
@@ -484,6 +509,15 @@ export default function GymPage() {
     e.preventDefault();
     if (!user || !exerciseName) return;
 
+    // Derive summary fields stored in gym_logs for backward compat
+    const validSets = exerciseSets.filter(s => s.reps > 0 || s.weight_kg > 0);
+    const setsCount = validSets.length || null;
+    const firstReps = validSets[0]?.reps || null;
+    const maxWeight = validSets.length > 0
+      ? Math.max(...validSets.map(s => s.weight_kg || 0))
+      : 0;
+    const weightForLog = maxWeight > 0 ? maxWeight : null;
+
     try {
       if (editingWorkout) {
         const { data, error } = await supabase
@@ -492,9 +526,9 @@ export default function GymPage() {
             exercise_name: exerciseName,
             muscle_groups: isCardio ? [] : muscleGroups,
             is_cardio: isCardio,
-            sets: sets || null,
-            reps: reps || null,
-            weight_kg: weight || null,
+            sets: setsCount,
+            reps: firstReps,
+            weight_kg: weightForLog,
             calories_burned: caloriesBurned,
             notes: notes || null,
           })
@@ -503,7 +537,33 @@ export default function GymPage() {
           .single();
 
         if (error) throw error;
-        const updated = gymLogs.map(l => l.id === editingWorkout.id ? data : l);
+
+        // Replace sets: delete old, insert new
+        await supabase.from('gym_log_sets').delete().eq('gym_log_id', editingWorkout.id);
+        if (exerciseSets.length > 0) {
+          await supabase.from('gym_log_sets').insert(
+            exerciseSets.map((s, i) => ({
+              gym_log_id: editingWorkout.id,
+              set_number: i + 1,
+              weight_kg: s.weight_kg || null,
+              reps: s.reps || null,
+              notes: s.notes || null,
+            }))
+          );
+        }
+
+        const updatedLog: GymLog = {
+          ...data,
+          gym_log_sets: exerciseSets.map((s, i) => ({
+            id: '',
+            gym_log_id: editingWorkout.id,
+            set_number: i + 1,
+            weight_kg: s.weight_kg || null,
+            reps: s.reps || null,
+            notes: s.notes || null,
+          })),
+        };
+        const updated = gymLogs.map(l => l.id === editingWorkout.id ? updatedLog : l);
         setGymLogs(updated);
         await updateDailyTotals(user.id, updated, selectedDate);
         toast('Updated!');
@@ -516,9 +576,9 @@ export default function GymPage() {
             exercise_name: exerciseName,
             muscle_groups: isCardio ? [] : muscleGroups,
             is_cardio: isCardio,
-            sets: sets || null,
-            reps: reps || null,
-            weight_kg: weight || null,
+            sets: setsCount,
+            reps: firstReps,
+            weight_kg: weightForLog,
             calories_burned: caloriesBurned,
             notes: notes || null,
             warmup_done: warmupDone,
@@ -529,13 +589,38 @@ export default function GymPage() {
           .single();
 
         if (error) throw error;
-        const updated = [...gymLogs, data];
+
+        // Insert sets
+        if (exerciseSets.length > 0) {
+          await supabase.from('gym_log_sets').insert(
+            exerciseSets.map((s, i) => ({
+              gym_log_id: data.id,
+              set_number: i + 1,
+              weight_kg: s.weight_kg || null,
+              reps: s.reps || null,
+              notes: s.notes || null,
+            }))
+          );
+        }
+
+        const newLog: GymLog = {
+          ...data,
+          gym_log_sets: exerciseSets.map((s, i) => ({
+            id: '',
+            gym_log_id: data.id,
+            set_number: i + 1,
+            weight_kg: s.weight_kg || null,
+            reps: s.reps || null,
+            notes: s.notes || null,
+          })),
+        };
+        const updated = [...gymLogs, newLog];
         setGymLogs(updated);
         setAllHistory(prev => [...prev, data]);
         await updateDailyTotals(user.id, updated, selectedDate);
 
         // PR detection
-        if (weight > 0) {
+        if (weightForLog && weightForLog > 0) {
           const exerciseHistory = allHistory.filter(
             l => l.exercise_name.trim().toLowerCase() === exerciseName.trim().toLowerCase()
               && l.weight_kg
@@ -543,9 +628,9 @@ export default function GymPage() {
           const previousBest = exerciseHistory.length > 0
             ? Math.max(...exerciseHistory.map(l => parseFloat(String(l.weight_kg))))
             : 0;
-          if (weight > previousBest) {
+          if (weightForLog > previousBest) {
             firePRConfetti();
-            toast(`New PR on ${exerciseName}! ${weight}kg`);
+            toast(`New PR on ${exerciseName}! ${weightForLog}kg`);
             resetForm();
             setShowAddModal(false);
             return;
@@ -567,9 +652,7 @@ export default function GymPage() {
     setExerciseName(exercise.exercise_name);
     setMuscleGroups(exercise.muscle_groups || []);
     setIsCardio(exercise.is_cardio);
-    setSets(0);
-    setReps(0);
-    setWeight(0);
+    setExerciseSets([{ weight_kg: 0, reps: 0, notes: '' }]);
     setCaloriesBurned(0);
     setNotes('');
     setMuscleInput('');
@@ -581,9 +664,26 @@ export default function GymPage() {
     setExerciseName(log.exercise_name);
     setMuscleGroups(log.muscle_groups || []);
     setIsCardio(log.is_cardio || false);
-    setSets(log.sets || 0);
-    setReps(log.reps || 0);
-    setWeight(log.weight_kg || 0);
+
+    // Populate sets from gym_log_sets if present, else reconstruct from legacy fields
+    if (log.gym_log_sets && log.gym_log_sets.length > 0) {
+      const sorted = [...log.gym_log_sets].sort((a, b) => a.set_number - b.set_number);
+      setExerciseSets(sorted.map(s => ({
+        weight_kg: s.weight_kg ?? 0,
+        reps: s.reps ?? 0,
+        notes: s.notes ?? '',
+      })));
+    } else {
+      const count = log.sets ?? 1;
+      setExerciseSets(
+        Array.from({ length: count }, () => ({
+          weight_kg: log.weight_kg ?? 0,
+          reps: log.reps ?? 0,
+          notes: '',
+        }))
+      );
+    }
+
     setCaloriesBurned(log.calories_burned || 0);
     setNotes(log.notes || '');
     setMuscleInput('');
@@ -1015,31 +1115,74 @@ export default function GymPage() {
               </div>
             )}
 
-            <Input
-              label="Sets"
-              type="number"
-              value={sets || ''}
-              min={0}
-              onChange={e => setSets(parseInt(e.target.value) || 0)}
-              placeholder="4"
-            />
-            <Input
-              label="Reps"
-              type="number"
-              value={reps || ''}
-              min={0}
-              onChange={e => setReps(parseInt(e.target.value) || 0)}
-              placeholder="10"
-            />
-            <Input
-              label="Weight (kg)"
-              type="number"
-              value={weight || ''}
-              min={0}
-              step={0.5}
-              onChange={e => setWeight(parseFloat(e.target.value) || 0)}
-              placeholder="60"
-            />
+            {/* Dynamic sets editor */}
+            <div className="md:col-span-2">
+              <label className="block font-pixel text-sm mb-2 text-darkgray">Sets</label>
+              <div className="space-y-2">
+                {exerciseSets.map((set, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 border-2 border-darkgray bg-gray-50">
+                    <span className="font-mono text-xs text-darkgray/50 w-10 flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <input
+                      type="number"
+                      value={set.weight_kg || ''}
+                      min={0}
+                      step={0.5}
+                      placeholder="kg"
+                      className="input-pixel w-20 text-sm"
+                      onChange={e => {
+                        const updated = [...exerciseSets];
+                        updated[i] = { ...updated[i], weight_kg: parseFloat(e.target.value) || 0 };
+                        setExerciseSets(updated);
+                      }}
+                    />
+                    <span className="font-mono text-xs text-darkgray/50">×</span>
+                    <input
+                      type="number"
+                      value={set.reps || ''}
+                      min={0}
+                      placeholder="reps"
+                      className="input-pixel w-20 text-sm"
+                      onChange={e => {
+                        const updated = [...exerciseSets];
+                        updated[i] = { ...updated[i], reps: parseInt(e.target.value) || 0 };
+                        setExerciseSets(updated);
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={set.notes}
+                      placeholder="note..."
+                      className="input-pixel flex-1 text-sm min-w-0"
+                      onChange={e => {
+                        const updated = [...exerciseSets];
+                        updated[i] = { ...updated[i], notes: e.target.value };
+                        setExerciseSets(updated);
+                      }}
+                    />
+                    {exerciseSets.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setExerciseSets(exerciseSets.filter((_, j) => j !== i))}
+                        className="p-1.5 border-2 border-darkgray bg-warning hover:bg-warning/70 flex-shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setExerciseSets([...exerciseSets, { weight_kg: 0, reps: 0, notes: '' }])}
+                  className="flex items-center gap-2 px-3 py-2 border-2 border-darkgray bg-white hover:bg-accent/20 font-mono text-sm transition-all"
+                >
+                  <Plus size={14} />
+                  Add Set
+                </button>
+              </div>
+            </div>
+
             <Input
               label="Calories Burned"
               type="number"
@@ -1050,11 +1193,11 @@ export default function GymPage() {
             />
             <div className="md:col-span-2">
               <Input
-                label="Notes"
+                label="Exercise Notes"
                 type="text"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                placeholder="Optional notes..."
+                placeholder="Optional notes for the whole exercise..."
               />
             </div>
           </div>

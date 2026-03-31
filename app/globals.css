@@ -34,11 +34,35 @@
   --color-scrollbar-thumb: #a855b5;
 }
 
+
 /* Base Styles */
 body {
   background-color: var(--color-background);
   color: var(--color-text);
   font-family: "VT323", monospace;
+  /* Push content down from status bar on notched devices */
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Mobile overrides */
+@media (max-width: 640px) {
+  .heading-pixel {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .subheading-pixel {
+    font-size: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .container-pixel {
+    padding: 1rem 0.75rem;
+  }
+
+  .card-pixel {
+    padding: 1rem;
+  }
 }
 
 /* Pixel Button */
@@ -262,3 +286,4 @@ body {
 [data-theme="dark"] .hover\:bg-lavender:hover {
   background-color: var(--color-lavender) !important;
 }
+

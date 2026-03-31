@@ -1,8 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import ToastProvider from "@/components/ui/ToastProvider";
 import ThemeToggle from "@/components/ThemeToggle";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#FFB5E8',
+};
 
 export const metadata: Metadata = {
   title: "Version - Wellbeing Tracker",
@@ -23,13 +30,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#FFB5E8" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body>
         <ToastProvider>
           <Navigation />
-          <main className="min-h-screen">
+          {/* pb-20 gives space for the mobile bottom nav bar; removed on md+ */}
+          <main className="min-h-screen pb-20 md:pb-0">
             {children}
           </main>
           <ThemeToggle />

@@ -44,6 +44,16 @@ export interface DailyEntry {
   updated_at?: string;
 }
 
+export interface GymLogSet {
+  id: string;
+  gym_log_id: string;
+  set_number: number;
+  weight_kg: number | null;
+  reps: number | null;
+  notes: string | null;
+  created_at?: string;
+}
+
 export interface GymLog {
   id: string;
   user_id: string;
@@ -59,6 +69,7 @@ export interface GymLog {
   notes: string | null;
   muscle_groups: string[];
   is_cardio: boolean;
+  gym_log_sets?: GymLogSet[];
 }
 
 export interface FoodLog {

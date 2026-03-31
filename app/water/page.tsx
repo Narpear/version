@@ -315,7 +315,7 @@ export default function WaterPage() {
       </Card>
 
       {/* Stats Row - More rectangular and compact */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <Card title={`${isToday ? 'Today\'s' : 'Day\'s'} Progress`}>
           <div className="text-center py-2">
             <p className="text-4xl font-bold font-mono" style={{ color: isComplete ? '#C1FBA4' : '#B5DEFF' }}>

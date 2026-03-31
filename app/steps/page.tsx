@@ -417,7 +417,7 @@ export default function StepsPage() {
       </Card>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <Card title={`${isToday ? "Today's" : "Day's"} Progress`}>
           <div className="text-center py-2">
             <p className="text-4xl font-bold font-mono" style={{ color: isComplete ? '#C1FBA4' : '#B5DEFF' }}>
@@ -457,7 +457,7 @@ export default function StepsPage() {
       <Card title="7-Day Steps Trend" className="mb-6">
         <div className="w-full h-64 md:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={weeklyData} margin={{ top: 10, right: 100, left: 0, bottom: 5 }}>
+            <AreaChart data={weeklyData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
               <defs>
                 <linearGradient id="stepsFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#B5DEFF" stopOpacity={0.45} />
