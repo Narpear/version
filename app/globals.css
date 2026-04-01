@@ -400,6 +400,20 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* ── Glass modals: opaque enough to read ── */
+[data-theme="glass"] .bg-white.max-h-\[90vh\] {
+  background: rgba(245, 235, 255, 0.93) !important;
+  backdrop-filter: blur(28px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8) !important;
+  border-radius: 20px !important;
+  overflow: hidden;
+}
+
+[data-theme="glass"] .max-h-\[90vh\] .sticky {
+  background: rgba(245, 235, 255, 0.97) !important;
+  border-radius: 20px 20px 0 0 !important;
+}
+
 [data-theme="glass"] nav {
   background: rgba(255,220,240,0.55) !important;
   backdrop-filter: blur(20px) !important;
@@ -407,8 +421,13 @@ body {
   border-color: rgba(255,255,255,0.4) !important;
 }
 
+[data-theme="glass"] nav a.border-darkgray {
+  border-radius: 12px !important;
+}
+
 [data-theme="glass"] .border-darkgray {
   border-color: rgba(180,150,220,0.35) !important;
+  border-radius: 12px !important;
 }
 
 [data-theme="glass"] .shadow-pixel {
