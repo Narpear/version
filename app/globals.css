@@ -1,5 +1,5 @@
 /* Import Google Fonts FIRST */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 @import "tailwindcss";
 
@@ -431,6 +431,114 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.5) !important;
   border-radius: 12px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.01em;
+}
+
+/* ── Glass Typography ── */
+[data-theme="glass"] body {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="glass"] .font-mono {
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+[data-theme="glass"] .font-pixel {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Headings: swap pixel font for Playfair Display */
+[data-theme="glass"] .heading-pixel {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 2rem !important;
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  text-transform: none !important;
+  color: #1a0533 !important;
+}
+
+[data-theme="glass"] .subheading-pixel {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 1.125rem !important;
+  font-weight: 600;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  text-transform: none !important;
+  color: #1a0533 !important;
+}
+
+/* Small pixel labels: swap to DM Sans */
+[data-theme="glass"] .text-pixel-xs {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.625rem !important;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+[data-theme="glass"] .text-pixel-sm {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.75rem !important;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-theme="glass"] .text-pixel-base {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+[data-theme="glass"] .text-pixel-lg {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 1rem !important;
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* Buttons: drop all-caps pixel feel, use DM Sans */
+[data-theme="glass"] .btn-pixel,
+[data-theme="glass"] .btn-pixel-secondary,
+[data-theme="glass"] .btn-pixel-success {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 600;
+  text-transform: none !important;
+  letter-spacing: 0.02em;
+  padding: 0.625rem 1.25rem !important;
+}
+
+/* Inputs: DM Sans */
+[data-theme="glass"] .input-pixel {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 400;
+}
+
+/* Nav labels */
+[data-theme="glass"] nav .font-mono {
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.5rem !important;
+}
+
+/* Hero gradient — italic serif headline in glass */
+[data-theme="glass"] .hero-gradient .heading-pixel {
+  font-size: 1.75rem !important;
 }
 
 /* ── Micro-animations ── */
