@@ -976,7 +976,7 @@ export default function GymPage() {
               key={g}
               onClick={() => setActiveMuscleView(g)}
               className={`px-3 py-1 border-2 border-darkgray font-mono text-sm transition-all ${
-                activeMuscleView === g ? 'bg-darkgray text-white' : 'bg-white hover:bg-accent/30'
+                activeMuscleView === g ? 'bg-primary border-darkgray text-darkgray font-bold' : 'bg-white hover:bg-accent/30'
               }`}
             >
               {g}
@@ -1260,7 +1260,7 @@ export default function GymPage() {
               key={g}
               onClick={() => setSelectedMuscleFilter(g)}
               className={`px-3 py-1 border-2 border-darkgray font-mono text-xs transition-all ${
-                selectedMuscleFilter === g ? 'bg-darkgray text-white' : 'bg-white hover:bg-accent/30'
+                selectedMuscleFilter === g ? 'bg-primary border-darkgray text-darkgray font-bold' : 'bg-white hover:bg-accent/30'
               }`}
             >
               {g}
