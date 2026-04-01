@@ -42,8 +42,8 @@ function Modal({ isOpen, onClose, title, children }: { isOpen: boolean; onClose:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white border-4 border-darkgray max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-pixel">
-        <div className="sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
+      <div className="modal-content relative bg-white border-4 border-darkgray max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-pixel">
+        <div className="modal-header sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
           <h2 className="heading-pixel text-xl">{title}</h2>
           <button onClick={onClose} className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all">
             <X size={20} />
