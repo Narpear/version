@@ -1014,14 +1014,6 @@ export default function GymPage() {
           <p className="font-mono text-2xl font-bold">{dailyTonnage.toLocaleString()}</p>
           <p className="font-mono text-xs text-darkgray/50">kg lifted</p>
         </Card>
-        <Card className="bg-indigo-50">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={16} className="text-indigo-500" />
-            <p className="text-pixel-xs text-darkgray/70">Week's Tonnage</p>
-          </div>
-          <p className="font-mono text-2xl font-bold">{weeklyTonnage.toLocaleString()}</p>
-          <p className="font-mono text-xs text-darkgray/50">kg this week</p>
-        </Card>
       </div>
 
       {/* ── Checklist (today only, only if logs exist) ── */}
