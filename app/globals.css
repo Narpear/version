@@ -3,6 +3,11 @@
 
 @import "tailwindcss";
 
+@theme {
+  --font-pixel: "Press Start 2P", cursive;
+  --font-mono: "VT323", monospace;
+}
+
 /* Theme Variables */
 :root {
   --color-primary: #FFB5E8;

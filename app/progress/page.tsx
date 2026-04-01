@@ -477,7 +477,7 @@ export default function ProgressPage() {
       {/* Overall Progress */}
       {activeGoal && (
         <Card title="Overall Progress to Goal" className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
             <div>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Start Weight</p>
               <p className="font-mono text-2xl font-bold">{activeGoal.start_weight_kg} kg</p>
@@ -490,6 +490,25 @@ export default function ProgressPage() {
               <p className="text-pixel-sm text-darkgray/70 mb-1">Goal Weight</p>
               <p className="font-mono text-2xl font-bold">{activeGoal.goal_weight_kg} kg</p>
             </div>
+            {(() => {
+              const startW = activeGoal.start_weight_kg;
+              const currentW = dailyEntry?.weight_kg || activeGoal.start_weight_kg;
+              const diff = startW - currentW;
+              if (diff === 0 || startW === 0) return null;
+              const pct = Math.abs((diff / startW) * 100).toFixed(1);
+              const lost = activeGoal.goal_type === 'gain' ? diff < 0 : diff > 0;
+              return (
+                <div className="border-2 border-primary/30 bg-primary/10 p-3 rounded">
+                  <p className="text-pixel-sm text-darkgray/70 mb-1">
+                    {activeGoal.goal_type === 'gain' ? 'Body Weight Gained' : 'Body Weight Lost'}
+                  </p>
+                  <p className="font-mono text-2xl font-bold" style={{ color: lost ? '#2d7a2d' : '#c92a2a' }}>
+                    {lost ? '-' : '+'}{pct}%
+                  </p>
+                  <p className="font-mono text-xs text-darkgray/50">of start weight</p>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

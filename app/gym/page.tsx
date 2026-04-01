@@ -432,6 +432,9 @@ export default function GymPage() {
   // Progress section
   const [progressSearch, setProgressSearch] = useState('');
 
+  // Tonnage
+  const [weeklyTonnage, setWeeklyTonnage] = useState(0);
+
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (!userData) { router.push('/login'); return; }
@@ -440,6 +443,7 @@ export default function GymPage() {
     loadWorkoutData(parsedUser.id, selectedDate);
     loadExerciseLibrary();
     loadAllHistory(parsedUser.id);
+    loadWeeklyTonnage(parsedUser.id, selectedDate);
   }, [router, selectedDate]);
 
   useEffect(() => {
@@ -509,6 +513,34 @@ export default function GymPage() {
       if (data) setAllHistory(data as GymLog[]);
     } catch (e) {
       console.log('Error loading history');
+    }
+  };
+
+  const calcTonnage = (logs: GymLog[]): number =>
+    logs.reduce((total, log) => {
+      if (log.is_cardio) return total;
+      if (log.gym_log_sets && log.gym_log_sets.length > 0) {
+        return total + log.gym_log_sets.reduce((s, set) => s + ((set.weight_kg || 0) * (set.reps || 0)), 0);
+      }
+      return total + ((log.sets || 0) * (log.reps || 0) * (log.weight_kg || 0));
+    }, 0);
+
+  const loadWeeklyTonnage = async (userId: string, date: string) => {
+    try {
+      const d = new Date(date + 'T00:00:00');
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      const weekStart = d.toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('gym_logs')
+        .select('*, gym_log_sets(*)')
+        .eq('user_id', userId)
+        .gte('date', weekStart)
+        .lte('date', date);
+      if (data) setWeeklyTonnage(calcTonnage(data));
+    } catch (e) {
+      console.log('Error loading weekly tonnage');
     }
   };
 
@@ -798,6 +830,7 @@ export default function GymPage() {
 
   // Derived
   const totalCalsBurned = gymLogs.reduce((s, l) => s + (l.calories_burned || 0), 0);
+  const dailyTonnage = calcTonnage(gymLogs);
 
   const muscleGroupsLogged = [
     ...new Set(
@@ -945,7 +978,7 @@ export default function GymPage() {
       </div>
 
       {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <Card className="bg-warning/10">
           <div className="flex items-center gap-2 mb-1">
             <Flame size={16} className="text-orange-500" />
@@ -972,6 +1005,22 @@ export default function GymPage() {
           <p className="font-mono text-sm">
             {[warmupDone, cooldownDone, meditationDone].filter(Boolean).length}/3 done
           </p>
+        </Card>
+        <Card className="bg-blue-50">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp size={16} className="text-blue-500" />
+            <p className="text-pixel-xs text-darkgray/70">Today's Tonnage</p>
+          </div>
+          <p className="font-mono text-2xl font-bold">{dailyTonnage.toLocaleString()}</p>
+          <p className="font-mono text-xs text-darkgray/50">kg lifted</p>
+        </Card>
+        <Card className="bg-indigo-50">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp size={16} className="text-indigo-500" />
+            <p className="text-pixel-xs text-darkgray/70">Week's Tonnage</p>
+          </div>
+          <p className="font-mono text-2xl font-bold">{weeklyTonnage.toLocaleString()}</p>
+          <p className="font-mono text-xs text-darkgray/50">kg this week</p>
         </Card>
       </div>
 
