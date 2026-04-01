@@ -16,36 +16,73 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 
 const MUSCLE_COLORS: Record<string, string> = {
-  'Chest':                  'bg-red-100 border-red-400 text-red-900',
-  'Upper Chest':            'bg-red-50 border-red-300 text-red-700',
+  // CHEST (red)
+  'Chest':                  'bg-red-100 border-red-500 text-red-900',
+  'Upper Chest':            'bg-red-50 border-red-400 text-red-800',
+
+  // BACK (blue family)
+  'Back':                   'bg-blue-200 border-blue-600 text-blue-900',
   'Lats':                   'bg-blue-100 border-blue-500 text-blue-900',
-  'Teres Major':            'bg-blue-50 border-blue-300 text-blue-700',
-  'Rhomboids':              'bg-sky-100 border-sky-400 text-sky-900',
-  'Mid Traps':              'bg-sky-50 border-sky-300 text-sky-700',
-  'Upper Traps':            'bg-indigo-100 border-indigo-400 text-indigo-900',
-  'Lower Back':             'bg-slate-100 border-slate-400 text-slate-800',
-  'Front Delts':            'bg-violet-100 border-violet-400 text-violet-900',
-  'Side Delts':             'bg-purple-100 border-purple-400 text-purple-900',
-  'Rear Delts':             'bg-fuchsia-100 border-fuchsia-500 text-fuchsia-900',
+  'Teres Major':            'bg-blue-50 border-blue-400 text-blue-800',
+
+  // UPPER BACK (sky)
+  'Upper Back':             'bg-sky-200 border-sky-600 text-sky-900',
+  'Rhomboids':              'bg-sky-100 border-sky-500 text-sky-900',
+  'Mid Traps':              'bg-sky-50 border-sky-400 text-sky-800',
+
+  // TRAPS (indigo)
+  'Traps':                  'bg-indigo-200 border-indigo-600 text-indigo-900',
+  'Upper Traps':            'bg-indigo-100 border-indigo-500 text-indigo-900',
+
+  // LOWER BACK (slate)
+  'Lower Back':             'bg-slate-100 border-slate-500 text-slate-900',
+
+  // SHOULDERS (purple family)
+  'Shoulders':              'bg-purple-200 border-purple-600 text-purple-900',
+  'Front Delts':            'bg-purple-100 border-purple-500 text-purple-900',
+  'Side Delts':             'bg-purple-50 border-purple-400 text-purple-800',
+  'Rear Delts':             'bg-purple-100 border-purple-600 text-purple-900',
+
+  // BICEPS (amber)
   'Biceps':                 'bg-amber-100 border-amber-500 text-amber-900',
-  'Brachialis':             'bg-amber-50 border-amber-300 text-amber-700',
-  'Forearms':               'bg-yellow-100 border-yellow-400 text-yellow-800',
+  'Brachialis':             'bg-amber-50 border-amber-400 text-amber-800',
+
+  // FOREARMS (yellow)
+  'Forearms':               'bg-yellow-100 border-yellow-500 text-yellow-900',
+
+  // TRICEPS (orange)
   'Triceps':                'bg-orange-100 border-orange-500 text-orange-900',
-  'Triceps (Long Head)':    'bg-orange-100 border-orange-400 text-orange-800',
-  'Triceps (Lateral Head)': 'bg-orange-50 border-orange-300 text-orange-700',
-  'Triceps (Medial Head)':  'bg-amber-50 border-orange-300 text-orange-700',
+  'Triceps (Long Head)':    'bg-orange-100 border-orange-400 text-orange-900',
+  'Triceps (Lateral Head)': 'bg-orange-50 border-orange-400 text-orange-800',
+  'Triceps (Medial Head)':  'bg-orange-50 border-orange-300 text-orange-800',
+
+  // LEGS - QUADS (green)
   'Quads':                  'bg-green-100 border-green-500 text-green-900',
+
+  // LEGS - HAMSTRINGS (teal)
   'Hamstrings':             'bg-teal-100 border-teal-500 text-teal-900',
+
+  // GLUTES (emerald)
   'Glutes':                 'bg-emerald-100 border-emerald-500 text-emerald-900',
-  'Glute Med':              'bg-emerald-50 border-emerald-300 text-emerald-700',
-  'Calves':                 'bg-cyan-100 border-cyan-400 text-cyan-900',
-  'Inner Thighs':           'bg-rose-100 border-rose-400 text-rose-800',
-  'Outer Thighs':           'bg-pink-100 border-pink-300 text-pink-800',
+  'Glute Med':              'bg-emerald-50 border-emerald-400 text-emerald-800',
+
+  // CALVES (cyan)
+  'Calves':                 'bg-cyan-100 border-cyan-500 text-cyan-900',
+
+  // INNER/OUTER THIGHS
+  'Adductors':              'bg-rose-200 border-rose-500 text-rose-900',
+  'Inner Thighs':           'bg-rose-100 border-rose-400 text-rose-900',
+
+  'Abductors':              'bg-pink-200 border-pink-500 text-pink-900',
+  'Outer Thighs':           'bg-pink-100 border-pink-400 text-pink-900',
+
+  // CORE (yellow/lime family)
+  'Core':                   'bg-yellow-200 border-yellow-600 text-yellow-900',
   'Abs':                    'bg-yellow-100 border-yellow-500 text-yellow-900',
   'Lower Abs':              'bg-yellow-50 border-yellow-400 text-yellow-800',
-  'Obliques':               'bg-lime-100 border-lime-400 text-lime-900',
-  'Hip Flexors':            'bg-lime-50 border-lime-300 text-lime-700',
-  'Deep Core':              'bg-yellow-50 border-yellow-300 text-yellow-700',
+  'Obliques':               'bg-lime-100 border-lime-500 text-lime-900',
+  'Hip Flexors':            'bg-lime-50 border-lime-400 text-lime-800',
+  'Deep Core':              'bg-yellow-50 border-yellow-300 text-yellow-800',
 };
 
 const FALLBACK_COLOR = 'bg-gray-100 border-gray-300 text-gray-800';
@@ -122,7 +159,7 @@ function ExerciseRow({ log, onEdit, onDelete }: {
             <div className="mt-2 space-y-1">
               {sortedSets.map((s, i) => (
                 <div key={s.id || i} className="flex items-center gap-3 font-mono text-sm text-darkgray/70">
-                  <span className="text-xs text-darkgray/40 w-10 flex-shrink-0">Set {s.set_number}</span>
+                  <span className="text-xs text-darkgray/40 w-10 shrink-0">Set {s.set_number}</span>
                   {s.weight_kg ? <span>{s.weight_kg} kg</span> : null}
                   {s.reps ? <span>× {s.reps} reps</span> : null}
                   {s.notes ? <span className="text-xs text-darkgray/40 italic truncate">— {s.notes}</span> : null}
@@ -149,7 +186,7 @@ function ExerciseRow({ log, onEdit, onDelete }: {
             <p className="font-mono text-xs text-darkgray/50 mt-1">{log.notes}</p>
           )}
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 shrink-0">
           <button
             onClick={() => onEdit(log)}
             className="p-2 border-2 border-darkgray bg-accent hover:bg-accent/70 transition-all"
@@ -305,7 +342,7 @@ function ExerciseProgressCard({ name, history }: { name: string; history: Histor
         <div className="flex items-center gap-3 min-w-0">
           <span className="font-mono font-bold text-sm truncate">{name}</span>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+        <div className="flex items-center gap-3 shrink-0 ml-4">
           <span className="font-mono text-xs text-darkgray/50 hidden sm:block">
             {latest ? `${latest.weight_kg} kg · ` : ''}
             {history.length} session{history.length !== 1 ? 's' : ''}
@@ -871,7 +908,7 @@ export default function GymPage() {
           >
             <ChevronLeft size={20} />
           </button>
-          <div className="text-center min-w-[110px]">
+          <div className="text-center min-w-27.5">
             <p className="font-mono font-bold">
               {isToday
                 ? 'Today'
@@ -955,7 +992,7 @@ export default function GymPage() {
                 }`}
               >
                 <div
-                  className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${
+                  className={`w-6 h-6 border-2 flex items-center justify-center shrink-0 ${
                     value ? 'bg-darkgray border-darkgray' : 'border-darkgray'
                   }`}
                 >
@@ -1092,7 +1129,7 @@ export default function GymPage() {
             {!isCardio && (
               <div className="md:col-span-2">
                 <label className="block text-pixel-sm mb-2">Muscles Worked</label>
-                <div className="flex flex-wrap gap-2 p-3 border-2 border-darkgray min-h-[48px] bg-white">
+                <div className="flex flex-wrap gap-2 p-3 border-2 border-darkgray min-h-12 bg-white">
                   {muscleGroups.map(g => (
                     <span
                       key={g}
@@ -1109,7 +1146,7 @@ export default function GymPage() {
                     value={muscleInput}
                     onChange={e => setMuscleInput(e.target.value)}
                     placeholder={muscleGroups.length === 0 ? 'Type a muscle and press Enter...' : 'Add more...'}
-                    className="font-mono text-xs border-none outline-none bg-transparent min-w-[160px] flex-1"
+                    className="font-mono text-xs border-none outline-none bg-transparent min-w-40 flex-1"
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -1139,7 +1176,7 @@ export default function GymPage() {
               <div className="space-y-2">
                 {exerciseSets.map((set, i) => (
                   <div key={i} className="flex items-center gap-2 p-2 border-2 border-darkgray bg-gray-50">
-                    <span className="font-mono text-xs text-darkgray/50 w-10 flex-shrink-0">
+                    <span className="font-mono text-xs text-darkgray/50 w-10 shrink-0">
                       {i + 1}
                     </span>
                     <input
@@ -1183,7 +1220,7 @@ export default function GymPage() {
                       <button
                         type="button"
                         onClick={() => setExerciseSets(exerciseSets.filter((_, j) => j !== i))}
-                        className="p-1.5 border-2 border-darkgray bg-warning hover:bg-warning/70 flex-shrink-0"
+                        className="p-1.5 border-2 border-darkgray bg-warning hover:bg-warning/70 shrink-0"
                       >
                         <X size={12} />
                       </button>
@@ -1288,7 +1325,7 @@ export default function GymPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <MuscleTags
                       groups={exercise.muscle_groups || []}
                       isCardio={exercise.is_cardio}

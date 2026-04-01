@@ -2,23 +2,32 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints } from 'lucide-react';
 
 const navItems = [
-  { href: '/',          icon: Home,       label: 'Home'     },
-  { href: '/gym',       icon: Dumbbell,   label: 'Gym'      },
-  { href: '/steps',     icon: Footprints, label: 'Steps'    },
-  { href: '/food',      icon: Utensils,   label: 'Food'     },
-  { href: '/progress',  icon: Target,     label: 'Progress' },
-  { href: '/water',     icon: Droplet,    label: 'Water'    },
-  { href: '/skincare',  icon: Sparkles,   label: 'Skincare' },
-  { href: '/profile',   icon: User,       label: 'Profile'  },
+  { href: '/',          icon: Home,       label: 'Home',     page: 'home'     },
+  { href: '/gym',       icon: Dumbbell,   label: 'Gym',      page: 'gym'      },
+  { href: '/steps',     icon: Footprints, label: 'Steps',    page: 'steps'    },
+  { href: '/food',      icon: Utensils,   label: 'Food',     page: 'food'     },
+  { href: '/progress',  icon: Target,     label: 'Progress', page: 'progress' },
+  { href: '/water',     icon: Droplet,    label: 'Water',    page: 'water'    },
+  { href: '/skincare',  icon: Sparkles,   label: 'Skincare', page: 'skincare' },
+  { href: '/profile',   icon: User,       label: 'Profile',  page: 'profile'  },
 ];
 
 const HIDDEN_PATHS = ['/login', '/signup', '/onboarding'];
 
 export default function Navigation() {
   const pathname = usePathname();
+
+  // Set data-page attribute for per-page accent colours
+  useEffect(() => {
+    const match = navItems.find(({ href }) =>
+      href === '/' ? pathname === '/' : pathname.startsWith(href)
+    );
+    document.documentElement.setAttribute('data-page', match?.page ?? 'home');
+  }, [pathname]);
 
   if (HIDDEN_PATHS.includes(pathname)) return null;
 
@@ -50,6 +59,7 @@ export default function Navigation() {
                         ? 'bg-secondary border-darkgray shadow-pixel'
                         : 'bg-white border-darkgray hover:bg-lavender hover:shadow-pixel'
                     }`}
+                    style={isActive ? { backgroundColor: 'var(--page-accent)' } : {}}
                   >
                     <Icon size={20} className="mb-1" />
                     <span className="text-pixel-xs">{label}</span>
@@ -61,29 +71,34 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* ── Bottom tab bar — mobile only ── */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-primary border-t-2 border-darkgray"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      {/* ── Floating pill bottom nav — mobile only ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden flex justify-center"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)', padding: '0 12px max(env(safe-area-inset-bottom), 12px) 12px' }}
       >
-        <div className="flex">
-          {navItems.map(({ href, icon: Icon, label }) => {
-            const isActive = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] border-r-2 border-darkgray last:border-r-0 transition-all ${
-                  isActive ? 'bg-secondary' : 'active:bg-lavender'
-                }`}
-              >
-                <Icon size={18} />
-                <span className="font-mono text-[9px] mt-0.5 leading-none">{label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+        <nav className="w-full max-w-sm bg-primary border-2 border-darkgray overflow-hidden"
+          style={{ borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
+        >
+          <div className="flex">
+            {navItems.map(({ href, icon: Icon, label }) => {
+              const isActive = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
+                    isActive ? 'bg-secondary' : 'active:bg-lavender'
+                  }`}
+                  style={isActive ? { backgroundColor: 'var(--page-accent)' } : {}}
+                >
+                  <Icon size={16} />
+                  <span className="font-mono text-[8px] mt-0.5 leading-none">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </>
   );
 }

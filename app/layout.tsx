@@ -35,8 +35,8 @@ export default function RootLayout({
       <body>
         <ToastProvider>
           <Navigation />
-          {/* pb-20 gives space for the mobile bottom nav bar; removed on md+ */}
-          <main className="min-h-screen pb-20 md:pb-0">
+          {/* pb-24 gives space for the floating pill bottom nav; removed on md+ */}
+          <main className="min-h-screen pb-24 md:pb-0">
             {children}
           </main>
           <ThemeToggle />

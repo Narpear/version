@@ -209,18 +209,21 @@ export default function HomePage() {
 
   return (
     <div className="container-pixel">
-      <div className="flex justify-between items-center mb-6">
+      {/* Hero gradient strip */}
+      <div className="hero-gradient flex justify-between items-center">
         <div>
-          <h1 className="heading-pixel">Welcome Back, {user.name || 'Player'}!</h1>
-          <p className="font-mono text-lg text-darkgray/70">
+          <h1 className="heading-pixel" style={{ marginBottom: '0.5rem' }}>
+            Welcome Back, {user.name || 'Player'}!
+          </h1>
+          <p className="font-mono text-lg text-darkgray/80">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>
         {streak > 0 && (
-          <div className="text-center">
-            <p className="text-pixel-sm text-darkgray/70">Current Streak</p>
-            <div className="flex items-center justify-center gap-2">
-              <Flame size={32} className="text-darkgray" />
+          <div className="text-center shrink-0 ml-4">
+            <p className="text-pixel-sm text-darkgray/70">Streak</p>
+            <div className="flex items-center justify-center gap-1">
+              <Flame size={28} className="text-darkgray" />
               <p className="font-mono text-4xl">{streak}</p>
             </div>
             <p className="text-pixel-xs">{streak === 1 ? 'day' : 'days'}</p>
