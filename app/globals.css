@@ -1,5 +1,5 @@
 /* Import Google Fonts FIRST */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 @import "tailwindcss";
 
@@ -23,22 +23,6 @@
   --color-scrollbar-track: #FFF9F0;
   --color-scrollbar-thumb: #FFB5E8;
 }
-
-[data-theme="dark"] {
-  --color-primary: #a855b5;
-  --color-secondary: #2a6496;
-  --color-accent: #2d6a4f;
-  --color-warning: #9b4d6b;
-  --color-success: #4a7c59;
-  --color-background: #1a1a1a;
-  --color-darkgray: #e0e0e0;
-  --color-lavender: #3d2b4f;
-  --color-surface: #2a2a2a;
-  --color-text: #f0f0f0;
-  --color-scrollbar-track: #1a1a1a;
-  --color-scrollbar-thumb: #a855b5;
-}
-
 
 /* Base Styles */
 body {
@@ -272,27 +256,7 @@ body {
   background: var(--color-secondary);
 }
 
-/* Dark mode overrides for hardcoded Tailwind whites */
-[data-theme="dark"] .bg-white {
-  background-color: var(--color-surface) !important;
-}
-
-[data-theme="dark"] .text-darkgray\/70,
-[data-theme="dark"] .text-darkgray\/60,
-[data-theme="dark"] .text-darkgray\/50,
-[data-theme="dark"] .text-darkgray\/40 {
-  color: rgba(224, 224, 224, 0.7) !important;
-}
-
-[data-theme="dark"] .border-darkgray {
-  border-color: var(--color-darkgray) !important;
-}
-
-[data-theme="dark"] .hover\:bg-lavender:hover {
-  background-color: var(--color-lavender) !important;
-}
-
-/* ── Glass Theme — Atelier palette: gold · sage · warm charcoal · ivory ── */
+/* ── Per-page accent colors ── */
 [data-theme="glass"] {
   --color-primary:    #B8965A;              /* antique gold        */
   --color-secondary:  #6B7A5C;              /* sage olive          */
