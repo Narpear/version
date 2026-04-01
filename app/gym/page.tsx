@@ -420,14 +420,26 @@ export default function GymPage() {
 
   const loadWorkoutData = async (userId: string, date: string) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('gym_logs')
         .select('*, gym_log_sets(*)')
         .eq('user_id', userId)
         .eq('date', date)
         .order('created_at', { ascending: true });
 
-      if (data) {
+      if (error) {
+        // gym_log_sets table doesn't exist yet — fall back to plain select
+        const { data: fallback } = await supabase
+          .from('gym_logs')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('date', date)
+          .order('created_at', { ascending: true });
+        if (fallback) {
+          setGymLogs(fallback);
+          await updateDailyTotals(userId, fallback, date);
+        }
+      } else if (data) {
         setGymLogs(data);
         await updateDailyTotals(userId, data, date);
       }
@@ -538,19 +550,21 @@ export default function GymPage() {
 
         if (error) throw error;
 
-        // Replace sets: delete old, insert new
-        await supabase.from('gym_log_sets').delete().eq('gym_log_id', editingWorkout.id);
-        if (exerciseSets.length > 0) {
-          await supabase.from('gym_log_sets').insert(
-            exerciseSets.map((s, i) => ({
-              gym_log_id: editingWorkout.id,
-              set_number: i + 1,
-              weight_kg: s.weight_kg || null,
-              reps: s.reps || null,
-              notes: s.notes || null,
-            }))
-          );
-        }
+        // Replace sets: delete old, insert new (non-fatal if table missing)
+        try {
+          await supabase.from('gym_log_sets').delete().eq('gym_log_id', editingWorkout.id);
+          if (exerciseSets.length > 0) {
+            await supabase.from('gym_log_sets').insert(
+              exerciseSets.map((s, i) => ({
+                gym_log_id: editingWorkout.id,
+                set_number: i + 1,
+                weight_kg: s.weight_kg || null,
+                reps: s.reps || null,
+                notes: s.notes || null,
+              }))
+            );
+          }
+        } catch { /* migration not run yet — sets stored in gym_logs summary fields */ }
 
         const updatedLog: GymLog = {
           ...data,
@@ -590,18 +604,20 @@ export default function GymPage() {
 
         if (error) throw error;
 
-        // Insert sets
-        if (exerciseSets.length > 0) {
-          await supabase.from('gym_log_sets').insert(
-            exerciseSets.map((s, i) => ({
-              gym_log_id: data.id,
-              set_number: i + 1,
-              weight_kg: s.weight_kg || null,
-              reps: s.reps || null,
-              notes: s.notes || null,
-            }))
-          );
-        }
+        // Insert sets (non-fatal if table missing)
+        try {
+          if (exerciseSets.length > 0) {
+            await supabase.from('gym_log_sets').insert(
+              exerciseSets.map((s, i) => ({
+                gym_log_id: data.id,
+                set_number: i + 1,
+                weight_kg: s.weight_kg || null,
+                reps: s.reps || null,
+                notes: s.notes || null,
+              }))
+            );
+          }
+        } catch { /* migration not run yet — sets stored in gym_logs summary fields */ }
 
         const newLog: GymLog = {
           ...data,
@@ -694,6 +710,8 @@ export default function GymPage() {
   const handleDelete = async (id: string) => {
     if (!user) return;
     try {
+      // Delete sets first — FK has no CASCADE so this must come before the log delete
+      await supabase.from('gym_log_sets').delete().eq('gym_log_id', id);
       await supabase.from('gym_logs').delete().eq('id', id);
       const updated = gymLogs.filter(l => l.id !== id);
       setGymLogs(updated);
