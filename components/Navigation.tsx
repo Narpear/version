@@ -6,14 +6,14 @@ import { useEffect } from 'react';
 import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints } from 'lucide-react';
 
 const navItems = [
-  { href: '/',          icon: Home,       label: 'Home',     page: 'home'     },
-  { href: '/gym',       icon: Dumbbell,   label: 'Gym',      page: 'gym'      },
-  { href: '/steps',     icon: Footprints, label: 'Steps',    page: 'steps'    },
-  { href: '/food',      icon: Utensils,   label: 'Food',     page: 'food'     },
-  { href: '/progress',  icon: Target,     label: 'Progress', page: 'progress' },
-  { href: '/water',     icon: Droplet,    label: 'Water',    page: 'water'    },
-  { href: '/skincare',  icon: Sparkles,   label: 'Skincare', page: 'skincare' },
-  { href: '/profile',   icon: User,       label: 'Profile',  page: 'profile'  },
+  { href: '/',          icon: Home,       label: 'Home',     page: 'home',     color: '#FFB5E8' }, // pink
+  { href: '/gym',       icon: Dumbbell,   label: 'Gym',      page: 'gym',      color: '#B5DEFF' }, // periwinkle
+  { href: '/steps',     icon: Footprints, label: 'Steps',    page: 'steps',    color: '#FFD4A3' }, // peach
+  { href: '/food',      icon: Utensils,   label: 'Food',     page: 'food',     color: '#BFFCC6' }, // mint
+  { href: '/progress',  icon: Target,     label: 'Progress', page: 'progress', color: '#FFE8A3' }, // amber
+  { href: '/water',     icon: Droplet,    label: 'Water',    page: 'water',    color: '#A3EEFF' }, // aqua
+  { href: '/skincare',  icon: Sparkles,   label: 'Skincare', page: 'skincare', color: '#DDB5FF' }, // violet
+  { href: '/profile',   icon: User,       label: 'Profile',  page: 'profile',  color: '#B5FFE8' }, // seafoam
 ];
 
 const HIDDEN_PATHS = ['/login', '/signup', '/onboarding'];
@@ -48,18 +48,16 @@ export default function Navigation() {
 
             {/* Nav links — desktop only */}
             <div className="hidden md:flex gap-1 md:gap-2">
-              {navItems.map(({ href, icon: Icon, label }) => {
+              {navItems.map(({ href, icon: Icon, label, color }) => {
                 const isActive = pathname === href;
                 return (
                   <Link
                     key={href}
                     href={href}
-                    className={`flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 transition-all ${
-                      isActive
-                        ? 'bg-secondary border-darkgray shadow-pixel'
-                        : 'bg-white border-darkgray hover:bg-lavender hover:shadow-pixel'
+                    className={`flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 border-darkgray transition-all ${
+                      isActive ? 'shadow-pixel' : 'opacity-60 hover:opacity-100 hover:shadow-pixel'
                     }`}
-                    style={isActive ? { backgroundColor: 'var(--page-accent)' } : {}}
+                    style={{ backgroundColor: color }}
                   >
                     <Icon size={20} className="mb-1" />
                     <span className="text-pixel-xs">{label}</span>
