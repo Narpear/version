@@ -268,7 +268,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-3 gap-2">
                   {([
                     { id: 'light', label: 'Pixel', icon: Monitor },
-                    { id: 'dark',  label: 'Dark',  icon: Moon },
+                    // { id: 'dark',  label: 'Dark',  icon: Moon },
                     { id: 'glass', label: 'Glass', icon: Sparkles },
                   ] as { id: Theme; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
                     <button
