@@ -78,16 +78,16 @@ export default function Navigation() {
           style={{ borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
         >
           <div className="flex">
-            {navItems.map(({ href, icon: Icon, label }) => {
+            {navItems.map(({ href, icon: Icon, label, color }) => {
               const isActive = pathname === href;
               return (
                 <Link
                   key={href}
                   href={href}
                   className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
-                    isActive ? 'bg-secondary' : 'active:bg-lavender'
+                    isActive ? '' : 'opacity-50'
                   }`}
-                  style={isActive ? { backgroundColor: 'var(--page-accent)' } : {}}
+                  style={{ backgroundColor: color }}
                 >
                   <Icon size={16} />
                   <span className="font-mono text-[8px] mt-0.5 leading-none">{label}</span>

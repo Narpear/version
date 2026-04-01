@@ -1,5 +1,5 @@
 /* Import Google Fonts FIRST */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&display=swap');
 
 @import "tailwindcss";
 
@@ -431,20 +431,20 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.5) !important;
   border-radius: 12px !important;
-  font-family: 'DM Sans', sans-serif !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
   font-size: 0.75rem !important;
   letter-spacing: 0.01em;
 }
 
 /* ── Glass Typography ── */
 [data-theme="glass"] body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 400;
   letter-spacing: 0.01em;
 }
 
 [data-theme="glass"] .font-mono {
-  font-family: 'DM Sans', sans-serif !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
   font-weight: 400;
   letter-spacing: 0;
 }
@@ -476,26 +476,26 @@ body {
   color: #1a0533 !important;
 }
 
-/* Small pixel labels: swap to DM Sans */
+/* Pixel labels → elegant Cormorant (serif needs bigger sizes to match visual weight) */
 [data-theme="glass"] .text-pixel-xs {
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.625rem !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 0.8rem !important;
   font-weight: 500;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 [data-theme="glass"] .text-pixel-sm {
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.75rem !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 0.95rem !important;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 [data-theme="glass"] .text-pixel-base {
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.875rem !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 1.1rem !important;
   font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: none;
@@ -508,32 +508,33 @@ body {
   text-transform: none;
 }
 
-/* Buttons: drop all-caps pixel feel, use DM Sans */
+/* Buttons: elegant Cormorant, no all-caps */
 [data-theme="glass"] .btn-pixel,
 [data-theme="glass"] .btn-pixel-secondary,
 [data-theme="glass"] .btn-pixel-success {
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 0.875rem !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 1.1rem !important;
   font-weight: 600;
+  font-style: italic;
   text-transform: none !important;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   padding: 0.625rem 1.25rem !important;
 }
 
-/* Inputs: DM Sans */
+/* Inputs: Cormorant */
 [data-theme="glass"] .input-pixel {
-  font-family: 'DM Sans', sans-serif !important;
-  font-size: 1rem !important;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 1.2rem !important;
   font-weight: 400;
 }
 
 /* Nav labels */
 [data-theme="glass"] nav .font-mono {
-  font-family: 'DM Sans', sans-serif !important;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.5rem !important;
+  font-size: 0.65rem !important;
 }
 
 /* Hero gradient — italic serif headline in glass */
