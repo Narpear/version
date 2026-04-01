@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 
-export type Theme = 'light' | 'dark' | 'glass';
+export type Theme = 'light' | 'glass';
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') as Theme | null;
-    const preferred: Theme =
-      saved ||
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const preferred: Theme = saved === 'glass' ? 'glass' : 'light';
     setTheme(preferred);
     document.documentElement.setAttribute('data-theme', preferred);
   }, []);
@@ -21,7 +19,7 @@ export function useTheme() {
   };
 
   const toggle = () => {
-    const next: Theme = theme === 'light' ? 'dark' : theme === 'dark' ? 'glass' : 'light';
+    const next: Theme = theme === 'light' ? 'glass' : 'light';
     applyTheme(next);
   };
 

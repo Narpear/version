@@ -1,20 +1,13 @@
 'use client';
 
 import { useTheme } from '@/lib/useTheme';
-import { Sun, Moon, Sparkles } from 'lucide-react';
+import { Sparkles, Grid2x2 } from 'lucide-react';
 
 export default function ThemeToggle() {
   const { theme, toggle } = useTheme();
 
-  const icon =
-    theme === 'dark' ? <Sun size={16} /> :
-    theme === 'glass' ? <Sparkles size={16} /> :
-    <Moon size={16} />;
-
-  const title =
-    theme === 'dark' ? 'Switch to glass mode' :
-    theme === 'glass' ? 'Switch to light mode' :
-    'Switch to dark mode';
+  const icon = theme === 'glass' ? <Grid2x2 size={16} /> : <Sparkles size={16} />;
+  const title = theme === 'glass' ? 'Switch to pixel mode' : 'Switch to glass mode';
 
   return (
     <button
