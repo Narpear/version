@@ -36,7 +36,7 @@ export default function Navigation() {
   return (
     <>
       {/* ── Top bar (logo + nav on desktop, logo-only on mobile) ── */}
-      <nav className="pwa-top-nav bg-primary border-b-2 border-darkgray">
+      <nav className="bg-primary border-b-2 border-darkgray">
         <div className="container-pixel py-0">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-darkgray">
@@ -71,23 +71,25 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* ── Full-width bottom tab bar — mobile only ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
-        <nav
-          className="w-full bg-primary border-t-2 border-darkgray overflow-x-auto"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      {/* ── Floating pill bottom nav — mobile only ── */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden flex justify-center"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)', padding: '0 12px max(env(safe-area-inset-bottom), 12px) 12px' }}
+      >
+        <nav className="w-full max-w-sm bg-primary border-2 border-darkgray overflow-hidden"
+          style={{ borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
         >
-          <div className="flex min-w-max w-full">
+          <div className="flex">
             {navItems.map(({ href, icon: Icon, label, color }) => {
               const isActive = pathname === href;
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex flex-col items-center justify-center py-2 min-h-13 transition-all px-3 ${
+                  className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
                     isActive ? '' : 'opacity-50'
                   }`}
-                  style={{ backgroundColor: color, minWidth: '10vw' }}
+                  style={{ backgroundColor: color }}
                 >
                   <Icon size={16} />
                   <span className="font-mono text-[8px] mt-0.5 leading-none">{label}</span>
