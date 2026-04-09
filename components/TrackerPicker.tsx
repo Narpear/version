@@ -28,7 +28,7 @@ export default function TrackerPicker({ selected, onChange }: TrackerPickerProps
   };
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-4 gap-2">
       {ALL_TRACKERS.map(({ key, label, icon: Icon, color, required }) => {
         const isSelected = required || selected.includes(key);
         return (
@@ -36,22 +36,17 @@ export default function TrackerPicker({ selected, onChange }: TrackerPickerProps
             key={key}
             type="button"
             onClick={() => !required && toggle(key)}
-            className={`flex items-center gap-3 p-4 border-2 border-darkgray transition-all text-left ${
+            className={`flex flex-col items-center justify-center gap-2 py-4 border-2 border-darkgray transition-all ${
               required
                 ? 'cursor-default'
                 : isSelected
                   ? 'shadow-pixel'
                   : 'hover:opacity-90'
             }`}
-            style={{ backgroundColor: isSelected ? color : required ? color : '#D1D5DB' }}
+            style={{ backgroundColor: isSelected ? color : '#D1D5DB' }}
           >
             <Icon size={20} className="shrink-0" />
-            <div>
-              <p className="font-pixel text-xs">{label}</p>
-              {required && (
-                <p className="font-mono text-[10px] text-darkgray/60">Always on</p>
-              )}
-            </div>
+            <p className="font-pixel text-[9px] text-center leading-tight">{label}</p>
           </button>
         );
       })}

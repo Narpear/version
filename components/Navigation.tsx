@@ -87,7 +87,7 @@ export default function Navigation() {
 
   const navLinkClass = (active: boolean) =>
     `flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 border-darkgray transition-all ${
-      active ? 'shadow-pixel' : 'opacity-60 hover:opacity-100 hover:shadow-pixel'
+      active ? 'shadow-pixel' : 'opacity-75 hover:opacity-100 hover:shadow-pixel'
     }`;
 
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -207,7 +207,7 @@ export default function Navigation() {
                 key={href}
                 href={href}
                 className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
-                  isActive(href) ? '' : 'opacity-50'
+                  isActive(href) ? '' : 'opacity-70'
                 }`}
                 style={{ backgroundColor: color }}
               >
