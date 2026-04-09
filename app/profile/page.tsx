@@ -10,6 +10,7 @@ import { User, Goal } from '@/types';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress, getProgressColor } from '@/lib/calculations';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Edit, X, Check } from 'lucide-react';
+import TrackerPicker from '@/components/TrackerPicker';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [selectedTrackers, setSelectedTrackers] = useState<string[]>(['food', 'gym', 'progress']);
+  const [savingTrackers, setSavingTrackers] = useState(false);
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
 
   // Profile edit state
@@ -47,6 +50,7 @@ export default function ProfilePage() {
     setEditAge(parsedUser.age || 0);
     setEditHeight(parsedUser.height_cm || 0);
     setEditGender(parsedUser.gender || 'female');
+    setSelectedTrackers(parsedUser.selected_trackers || ['food', 'gym', 'progress']);
     loadGoal(parsedUser.id);
     loadCurrentWeight(parsedUser.id);
   }, [router]);
@@ -192,6 +196,31 @@ export default function ProfilePage() {
       alert('Failed to save goal');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveTrackers = async () => {
+    if (!user) return;
+    setSavingTrackers(true);
+    try {
+      const res = await fetch('/api/user/trackers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, selected_trackers: selectedTrackers }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const updatedUser = { ...user, selected_trackers: data.selected_trackers };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event('trackersupdated'));
+      toast('Trackers updated!');
+    } catch (error) {
+      console.error('Error saving trackers:', error);
+      toast('Failed to save trackers');
+    } finally {
+      setSavingTrackers(false);
     }
   };
 
@@ -382,6 +411,17 @@ export default function ProfilePage() {
           </div>
         </Card>
       </div>
+
+      {/* My Trackers Card */}
+      <Card title="My Trackers" className="mt-6">
+        <p className="font-mono text-sm mb-4 text-darkgray/70">
+          Choose which trackers appear in your navigation.
+        </p>
+        <TrackerPicker selected={selectedTrackers} onChange={setSelectedTrackers} />
+        <Button onClick={handleSaveTrackers} disabled={savingTrackers} className="w-full mt-4">
+          {savingTrackers ? 'Saving...' : 'Save Trackers'}
+        </Button>
+      </Card>
 
       {/* Current Goal Display */}
       {activeGoal && (

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
+import TrackerPicker from '@/components/TrackerPicker';
 import { supabase } from '@/lib/supabase';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal } from '@/lib/calculations';
 
@@ -21,6 +22,9 @@ export default function OnboardingPage() {
 
   // Step 2: Goal (Optional)
   const [wantsGoal, setWantsGoal] = useState<boolean | null>(null);
+
+  // Step 3: Tracker Selection
+  const [selectedTrackers, setSelectedTrackers] = useState<string[]>(['food', 'gym', 'progress']);
   const [goalType, setGoalType] = useState<'loss' | 'gain' | 'maintenance'>('loss');
   const [startWeight, setStartWeight] = useState(0);
   const [goalWeight, setGoalWeight] = useState(0);
@@ -106,14 +110,34 @@ export default function OnboardingPage() {
           });
       }
 
-      // Clear onboarding flag
-      localStorage.removeItem('needsOnboarding');
-      
-      // Redirect to dashboard
-      router.push('/');
+      // Advance to tracker selection step
+      setStep(3);
     } catch (error) {
       console.error('Error creating goal:', error);
       alert('Failed to save goal');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStep3Submit = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/user/trackers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, selected_trackers: selectedTrackers }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const updatedUser = { ...user, selected_trackers: data.selected_trackers };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.removeItem('needsOnboarding');
+      router.push('/');
+    } catch (error) {
+      console.error('Error saving trackers:', error);
+      alert('Failed to save tracker selection');
     } finally {
       setLoading(false);
     }
@@ -133,6 +157,7 @@ export default function OnboardingPage() {
         <div className="flex gap-2 mb-6">
           <div className={`flex-1 h-2 border-2 border-darkgray ${step >= 1 ? 'bg-primary' : 'bg-white'}`} />
           <div className={`flex-1 h-2 border-2 border-darkgray ${step >= 2 ? 'bg-primary' : 'bg-white'}`} />
+          <div className={`flex-1 h-2 border-2 border-darkgray ${step >= 3 ? 'bg-primary' : 'bg-white'}`} />
         </div>
 
         {step === 1 && (
@@ -291,6 +316,22 @@ export default function OnboardingPage() {
               </Button>
             </div>
           </form>
+        )}
+        {step === 3 && (
+          <div>
+            <p className="font-mono text-sm mb-4 text-darkgray/70">
+              Choose which trackers to show in your nav. Food, Gym, and Progress are always included.
+            </p>
+            <TrackerPicker selected={selectedTrackers} onChange={setSelectedTrackers} />
+            <div className="flex gap-4 mt-6">
+              <Button type="button" onClick={() => setStep(2)} variant="secondary" className="flex-1">
+                Back
+              </Button>
+              <Button type="button" onClick={handleStep3Submit} disabled={loading} className="flex-1">
+                {loading ? 'Saving...' : 'Finish!'}
+              </Button>
+            </div>
+          </div>
         )}
       </Card>
     </div>

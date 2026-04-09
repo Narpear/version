@@ -8,6 +8,7 @@ export interface User {
   created_at?: string;
   updated_at?: string;
   steps_goal?: number;
+  selected_trackers?: string[];
 }
 
 export interface Goal {
