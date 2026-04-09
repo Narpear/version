@@ -25,12 +25,41 @@
 }
 
 /* Base Styles */
-body {
+html {
   background-color: var(--color-background);
+}
+
+body {
+  background-color: transparent;
   color: var(--color-text);
   font-family: "VT323", monospace;
   /* Push content down from status bar on notched devices */
   padding-top: env(safe-area-inset-top);
+}
+
+/* ── Page background images ── */
+:root                  { --page-bg: none; }
+[data-page="home"]     { --page-bg: url('/backgrounds/home.jpg'); }
+[data-page="gym"]      { --page-bg: url('/backgrounds/gym.jpg'); }
+[data-page="food"]     { --page-bg: url('/backgrounds/food.jpg'); }
+[data-page="water"]    { --page-bg: url('/backgrounds/water.jpg'); }
+[data-page="skincare"] { --page-bg: url('/backgrounds/skincare.jpg'); }
+[data-page="sleep"]    { --page-bg: url('/backgrounds/sleep.jpg'); }
+[data-page="steps"]    { --page-bg: url('/backgrounds/steps.jpg'); }
+[data-page="progress"] { --page-bg: url('/backgrounds/progress.jpg'); }
+[data-page="profile"]  { --page-bg: url('/backgrounds/profile.jpg'); }
+[data-page="books"]    { --page-bg: url('/backgrounds/books.jpg'); }
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--page-bg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.22;
 }
 
 /* Mobile overrides */
@@ -111,7 +140,9 @@ body {
 
 /* Pixel Card */
 .card-pixel {
-  background-color: var(--color-surface);
+  background-color: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   border: 2px solid var(--color-darkgray);
   box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
   padding: 1.5rem;
@@ -550,6 +581,11 @@ body {
   font-size: 1.75rem !important;
 }
 
+/* ── PWA standalone: hide top nav, show only bottom tab bar ── */
+@media (display-mode: standalone) {
+  .pwa-top-nav { display: none !important; }
+}
+
 /* ── Micro-animations ── */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(16px); }
@@ -598,6 +634,8 @@ body {
 [data-page="skincare"] { --page-accent: #E0BBE4; }
 [data-page="profile"]  { --page-accent: #FFFFB5; }
 [data-page="home"]     { --page-accent: #FFB5E8; }
+[data-page="sleep"]    { --page-accent: #C9B5FF; }
+[data-page="books"]    { --page-accent: #F5D4BD; }
 
 [data-theme="glass"][data-page="gym"]      { --page-accent: rgba(107,122,92,0.45);  } /* sage          */
 [data-theme="glass"][data-page="food"]     { --page-accent: rgba(140,118,82,0.42);  } /* wheat         */
@@ -610,7 +648,9 @@ body {
 
 /* ── Hero gradient strip ── */
 .hero-gradient {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-lavender) 50%, var(--color-secondary) 100%);
+  background: linear-gradient(135deg, rgba(255,181,232,0.75) 0%, rgba(224,187,228,0.75) 50%, rgba(181,222,255,0.75) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   border: 2px solid var(--color-darkgray);
   padding: 1.5rem;
   margin-bottom: 1.5rem;

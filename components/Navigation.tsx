@@ -3,17 +3,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints } from 'lucide-react';
+import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints, Moon, BookOpen } from 'lucide-react';
 
 const navItems = [
-  { href: '/',          icon: Home,       label: 'Home',     page: 'home',     color: '#FFB5E8' }, // pink
-  { href: '/gym',       icon: Dumbbell,   label: 'Gym',      page: 'gym',      color: '#B5DEFF' }, // periwinkle
-  { href: '/steps',     icon: Footprints, label: 'Steps',    page: 'steps',    color: '#FFD4A3' }, // peach
-  { href: '/food',      icon: Utensils,   label: 'Food',     page: 'food',     color: '#BFFCC6' }, // mint
-  { href: '/progress',  icon: Target,     label: 'Progress', page: 'progress', color: '#FFE8A3' }, // amber
-  { href: '/water',     icon: Droplet,    label: 'Water',    page: 'water',    color: '#A3EEFF' }, // aqua
-  { href: '/skincare',  icon: Sparkles,   label: 'Skincare', page: 'skincare', color: '#DDB5FF' }, // violet
-  { href: '/profile',   icon: User,       label: 'Profile',  page: 'profile',  color: '#B5FFE8' }, // seafoam
+  { href: '/',          icon: Home,       label: 'Home',     page: 'home',     color: '#F5BEDD' }, // rose
+  { href: '/gym',       icon: Dumbbell,   label: 'Gym',      page: 'gym',      color: '#BDCFF5' }, // periwinkle
+  { href: '/steps',     icon: Footprints, label: 'Steps',    page: 'steps',    color: '#F5CFBD' }, // peach
+  { href: '/food',      icon: Utensils,   label: 'Food',     page: 'food',     color: '#BDEFD4' }, // mint
+  { href: '/progress',  icon: Target,     label: 'Progress', page: 'progress', color: '#F5E8BD' }, // honey
+  { href: '/water',     icon: Droplet,    label: 'Water',    page: 'water',    color: '#BDE8F5' }, // sky
+  { href: '/sleep',     icon: Moon,       label: 'Sleep',    page: 'sleep',    color: '#CBBDF5' }, // lavender
+  { href: '/skincare',  icon: Sparkles,   label: 'Skincare', page: 'skincare', color: '#E4BDF5' }, // lilac
+  { href: '/books',     icon: BookOpen,   label: 'Books',    page: 'books',    color: '#F5D4BD' }, // warm peach
+  { href: '/profile',   icon: User,       label: 'Profile',  page: 'profile',  color: '#BDF5E4' }, // seafoam
 ];
 
 const HIDDEN_PATHS = ['/login', '/signup', '/onboarding'];
@@ -34,7 +36,7 @@ export default function Navigation() {
   return (
     <>
       {/* ── Top bar (logo + nav on desktop, logo-only on mobile) ── */}
-      <nav className="bg-primary border-b-2 border-darkgray">
+      <nav className="pwa-top-nav bg-primary border-b-2 border-darkgray">
         <div className="container-pixel py-0">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-darkgray">
@@ -69,25 +71,23 @@ export default function Navigation() {
         </div>
       </nav>
 
-      {/* ── Floating pill bottom nav — mobile only ── */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 md:hidden flex justify-center"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)', padding: '0 12px max(env(safe-area-inset-bottom), 12px) 12px' }}
-      >
-        <nav className="w-full max-w-sm bg-primary border-2 border-darkgray overflow-hidden"
-          style={{ borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
+      {/* ── Full-width bottom tab bar — mobile only ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+        <nav
+          className="w-full bg-primary border-t-2 border-darkgray overflow-x-auto"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <div className="flex">
+          <div className="flex min-w-max w-full">
             {navItems.map(({ href, icon: Icon, label, color }) => {
               const isActive = pathname === href;
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
+                  className={`flex flex-col items-center justify-center py-2 min-h-13 transition-all px-3 ${
                     isActive ? '' : 'opacity-50'
                   }`}
-                  style={{ backgroundColor: color }}
+                  style={{ backgroundColor: color, minWidth: '10vw' }}
                 >
                   <Icon size={16} />
                   <span className="font-mono text-[8px] mt-0.5 leading-none">{label}</span>

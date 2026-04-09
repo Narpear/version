@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import ToastProvider from "@/components/ui/ToastProvider";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -39,7 +38,6 @@ export default function RootLayout({
           <main className="min-h-screen pb-24 md:pb-0">
             {children}
           </main>
-          <ThemeToggle />
         </ToastProvider>
       </body>
     </html>

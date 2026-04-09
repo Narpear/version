@@ -126,3 +126,37 @@ export interface ExerciseLibrary {
   muscle_groups: string[];
   is_cardio: boolean;
 }
+
+export interface Book {
+  id: string;
+  user_id: string;
+  title: string;
+  author: string;
+  total_pages: number;
+  pages_read: number;
+  status: 'reading' | 'finished' | 'want_to_read';
+  rating: number | null;
+  start_date: string | null;
+  finish_date: string | null;
+  created_at?: string;
+}
+
+export interface ReadingSession {
+  id: string;
+  user_id: string;
+  book_id: string;
+  date: string;
+  pages_read: number;
+  created_at?: string;
+}
+
+export interface SleepLog {
+  id: string;
+  user_id: string;
+  date: string;
+  bedtime: string | null;
+  wake_time: string | null;
+  sleep_duration_hours: number | null;
+  quality: number | null;
+  created_at?: string;
+}

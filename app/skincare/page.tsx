@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { User, SkincareLog } from '@/types';
 import { Sparkles, TrendingUp, CheckCircle2, Sun, Moon, Dumbbell, Info, Smile, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
+import { useSwipe } from '@/hooks/useSwipe';
 
 interface DailySkincare {
   date: string;
@@ -262,6 +263,11 @@ export default function SkincarePage() {
     setSelectedDate(newDate.toISOString().split('T')[0]);
   };
 
+  const { onTouchStart, onTouchEnd } = useSwipe(
+    () => { if (!isToday) changeDate(1); },
+    () => changeDate(-1),
+  );
+
   if (loading) {
     return (
       <div className="container-pixel">
@@ -287,7 +293,7 @@ export default function SkincarePage() {
     : '0';
 
   return (
-    <div className="container-pixel">
+    <div className="container-pixel" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {/* Date Navigation */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="heading-pixel">Skincare Tracker</h1>

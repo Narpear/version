@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -9,13 +9,11 @@ import { supabase } from '@/lib/supabase';
 import { User, Goal } from '@/types';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress, getProgressColor } from '@/lib/calculations';
 import { useToast } from '@/components/ui/ToastProvider';
-import { Edit, X, Check, Monitor, Moon, Sparkles } from 'lucide-react';
-import { useTheme, Theme } from '@/lib/useTheme';
+import { Edit, X, Check } from 'lucide-react';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { theme, applyTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -261,31 +259,6 @@ export default function ProfilePage() {
               <Button onClick={handleLogout} variant="secondary" className="w-full">
                 Logout
               </Button>
-
-              {/* Theme picker */}
-              <div className="mt-5">
-                <p className="text-pixel-sm text-darkgray/70 mb-3">Theme</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {([
-                    { id: 'light', label: 'Pixel', icon: Monitor },
-                    // { id: 'dark',  label: 'Dark',  icon: Moon },
-                    { id: 'glass', label: 'Glass', icon: Sparkles },
-                  ] as { id: Theme; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => applyTheme(id)}
-                      className={`flex flex-col items-center gap-1 py-3 border-2 transition-all font-mono text-xs ${
-                        theme === id
-                          ? 'border-darkgray bg-primary font-bold'
-                          : 'border-darkgray bg-surface hover:bg-lavender'
-                      }`}
-                    >
-                      <Icon size={18} />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               <p className="text-center font-mono text-xs mt-4 text-darkgray/50">
                 View the{' '}

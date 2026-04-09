@@ -1015,7 +1015,6 @@ export default function GymPage() {
           <p className="font-mono text-xs text-darkgray/50">kg lifted</p>
         </Card>
       </div>
-
       {/* ── Checklist (today only, only if logs exist) ── */}
       {isToday && gymLogs.length > 0 && (
         <Card title="Today's Checklist" className="mb-6">
