@@ -66,7 +66,10 @@ export default function Navigation() {
     return () => document.removeEventListener('mousedown', handler);
   }, [moreOpen]);
 
-  if (HIDDEN_PATHS.includes(pathname)) return null;
+  if (HIDDEN_PATHS.includes(pathname)) {
+    document.documentElement.setAttribute('data-page', 'start');
+    return null;
+  }
 
   // Filter nav items based on selected trackers; home + profile always show
   const filteredItems = navItems.filter(

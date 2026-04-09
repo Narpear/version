@@ -49,6 +49,7 @@ body {
 [data-page="progress"] { --page-bg: url('/backgrounds/progress.jpg'); }
 [data-page="profile"]  { --page-bg: url('/backgrounds/profile.jpg'); }
 [data-page="books"]    { --page-bg: url('/backgrounds/books.jpg'); }
+[data-page="start"]    { --page-bg: url('/backgrounds/start.jpg'); }
 
 body::before {
   content: '';
