@@ -14,6 +14,7 @@ import Link from 'next/link';
 export default function HomePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [selectedTrackers, setSelectedTrackers] = useState<string[]>(['food', 'gym', 'progress']);
   const [todayEntry, setTodayEntry] = useState<DailyEntry | null>(null);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,7 @@ export default function HomePage() {
     
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
+    setSelectedTrackers(parsedUser.selected_trackers || ['food', 'gym', 'progress']);
     
     // Check if needs onboarding
     const needsOnboarding = localStorage.getItem('needsOnboarding');
@@ -249,23 +251,25 @@ export default function HomePage() {
           <p className="font-mono text-3xl">{caloriesOut}</p>
         </Card>
 
-        <Card>
-          <div className="flex items-center gap-2 mb-2">
-            <Droplet size={20} className="text-secondary" />
-            <p className="text-pixel-sm text-darkgray/70">Water</p>
-          </div>
-          <p className="font-mono text-3xl">{waterGlasses}/8</p>
-          <div className="progress-pixel h-2 mt-2">
-            <div 
-              className="h-full"
-              style={{ 
-                width: `${waterPercent}%`,
-                backgroundColor: waterPercent >= 100 ? '#C1FBA4' : '#B5DEFF',
-                borderRight: waterPercent > 0 ? '4px solid #4A4A4A' : 'none'
-              }}
-            />
-          </div>
-        </Card>
+        {selectedTrackers.includes('water') && (
+          <Card>
+            <div className="flex items-center gap-2 mb-2">
+              <Droplet size={20} className="text-secondary" />
+              <p className="text-pixel-sm text-darkgray/70">Water</p>
+            </div>
+            <p className="font-mono text-3xl">{waterGlasses}/8</p>
+            <div className="progress-pixel h-2 mt-2">
+              <div
+                className="h-full"
+                style={{
+                  width: `${waterPercent}%`,
+                  backgroundColor: waterPercent >= 100 ? '#C1FBA4' : '#B5DEFF',
+                  borderRight: waterPercent > 0 ? '4px solid #4A4A4A' : 'none'
+                }}
+              />
+            </div>
+          </Card>
+        )}
 
         <Card style={{ backgroundColor: balance !== null ? balanceColor : 'var(--color-surface)' }}>
           <div className="flex items-center gap-2 mb-2">
@@ -298,12 +302,14 @@ export default function HomePage() {
               <span>Log Gym</span>
             </button>
           </Link>
-          <Link href="/water">
-            <button className="w-full btn-pixel-secondary flex items-center justify-center gap-2">
-              <Droplet size={16} />
-              <span>Add Water</span>
-            </button>
-          </Link>
+          {selectedTrackers.includes('water') && (
+            <Link href="/water">
+              <button className="w-full btn-pixel-secondary flex items-center justify-center gap-2">
+                <Droplet size={16} />
+                <span>Add Water</span>
+              </button>
+            </Link>
+          )}
           <Link href="/progress">
             <button className="w-full btn-pixel-success flex items-center justify-center gap-2">
               <TrendingUp size={16} />
@@ -316,7 +322,7 @@ export default function HomePage() {
       {/* Weekly Summary */}
       {user && (
         <div className="mb-6">
-          <WeeklySummary userId={user.id} />
+          <WeeklySummary userId={user.id} selectedTrackers={selectedTrackers} />
         </div>
       )}
 

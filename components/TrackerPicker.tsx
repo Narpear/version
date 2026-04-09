@@ -41,9 +41,9 @@ export default function TrackerPicker({ selected, onChange }: TrackerPickerProps
                 ? 'cursor-default'
                 : isSelected
                   ? 'shadow-pixel'
-                  : 'opacity-50 hover:opacity-80'
+                  : 'hover:opacity-90'
             }`}
-            style={{ backgroundColor: color }}
+            style={{ backgroundColor: isSelected ? color : required ? color : '#D1D5DB' }}
           >
             <Icon size={20} className="shrink-0" />
             <div>

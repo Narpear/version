@@ -46,8 +46,12 @@ export default function Navigation() {
     return () => window.removeEventListener('trackersupdated', load);
   }, []);
 
-  // Set data-page attribute for per-page accent colours (always uses full navItems)
+  // Set data-page attribute for per-page accent colours
   useEffect(() => {
+    if (HIDDEN_PATHS.includes(pathname)) {
+      document.documentElement.setAttribute('data-page', 'start');
+      return;
+    }
     const match = navItems.find(({ href }) =>
       href === '/' ? pathname === '/' : pathname.startsWith(href)
     );
@@ -66,10 +70,7 @@ export default function Navigation() {
     return () => document.removeEventListener('mousedown', handler);
   }, [moreOpen]);
 
-  if (HIDDEN_PATHS.includes(pathname)) {
-    document.documentElement.setAttribute('data-page', 'start');
-    return null;
-  }
+  if (HIDDEN_PATHS.includes(pathname)) return null;
 
   // Filter nav items based on selected trackers; home + profile always show
   const filteredItems = navItems.filter(

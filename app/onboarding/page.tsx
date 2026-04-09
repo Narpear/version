@@ -134,6 +134,7 @@ export default function OnboardingPage() {
       const updatedUser = { ...user, selected_trackers: data.selected_trackers };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.removeItem('needsOnboarding');
+      window.dispatchEvent(new Event('trackersupdated'));
       router.push('/');
     } catch (error) {
       console.error('Error saving trackers:', error);

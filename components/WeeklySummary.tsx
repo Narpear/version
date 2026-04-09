@@ -8,9 +8,11 @@ import { Target, Award, Flame, Calendar, Dumbbell, Footprints, Sparkles } from '
 
 interface WeeklySummaryProps {
   userId: string;
+  selectedTrackers?: string[];
 }
 
-export default function WeeklySummary({ userId }: WeeklySummaryProps) {
+export default function WeeklySummary({ userId, selectedTrackers = ['food', 'gym', 'progress'] }: WeeklySummaryProps) {
+  const hasTracker = (key: string) => selectedTrackers.includes(key);
   const [weekData, setWeekData] = useState<DailyEntry[]>([]);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [mealsLogged, setMealsLogged] = useState(0);
@@ -193,12 +195,14 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
           <p className="text-pixel-xs">this week</p>
         </div>
 
-        <div className="text-center p-3 border-2 border-darkgray bg-accent/20">
-          <Footprints size={24} className="mx-auto mb-2 text-darkgray" />
-          <p className="text-pixel-sm text-darkgray/70 mb-1">Step Goal Days</p>
-          <p className="font-mono text-3xl">{daysHitSteps}/7</p>
-          <p className="text-pixel-xs">8,000+ steps</p>
-        </div>
+        {hasTracker('steps') && (
+          <div className="text-center p-3 border-2 border-darkgray bg-accent/20">
+            <Footprints size={24} className="mx-auto mb-2 text-darkgray" />
+            <p className="text-pixel-sm text-darkgray/70 mb-1">Step Goal Days</p>
+            <p className="font-mono text-3xl">{daysHitSteps}/7</p>
+            <p className="text-pixel-xs">8,000+ steps</p>
+          </div>
+        )}
       </div>
 
       {/* Secondary Stats */}
@@ -218,25 +222,31 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
           <p className="font-mono text-xl">{avgProtein}g</p>
         </div>
 
-        <div className="text-center p-2 border-2 border-darkgray bg-white">
-          <p className="text-pixel-xs text-darkgray/70 mb-1">Total Steps</p>
-          <p className="font-mono text-xl">{totalSteps.toLocaleString()}</p>
-        </div>
+        {hasTracker('steps') && (
+          <div className="text-center p-2 border-2 border-darkgray bg-white">
+            <p className="text-pixel-xs text-darkgray/70 mb-1">Total Steps</p>
+            <p className="font-mono text-xl">{totalSteps.toLocaleString()}</p>
+          </div>
+        )}
 
-        <div className="text-center p-2 border-2 border-darkgray bg-white">
-          <p className="text-pixel-xs text-darkgray/70 mb-1">Water Goals</p>
-          <p className="font-mono text-xl">{daysHitWaterGoal}/7</p>
-        </div>
+        {hasTracker('water') && (
+          <div className="text-center p-2 border-2 border-darkgray bg-white">
+            <p className="text-pixel-xs text-darkgray/70 mb-1">Water Goals</p>
+            <p className="font-mono text-xl">{daysHitWaterGoal}/7</p>
+          </div>
+        )}
 
         <div className="text-center p-2 border-2 border-darkgray bg-white">
           <p className="text-pixel-xs text-darkgray/70 mb-1">Active Days</p>
           <p className="font-mono text-xl">{activeDays}/7</p>
         </div>
 
-        <div className="text-center p-2 border-2 border-darkgray bg-white">
-          <p className="text-pixel-xs text-darkgray/70 mb-1">Skincare Days</p>
-          <p className="font-mono text-xl">{skincareConsistency}/7</p>
-        </div>
+        {hasTracker('skincare') && (
+          <div className="text-center p-2 border-2 border-darkgray bg-white">
+            <p className="text-pixel-xs text-darkgray/70 mb-1">Skincare Days</p>
+            <p className="font-mono text-xl">{skincareConsistency}/7</p>
+          </div>
+        )}
 
         <div className="text-center p-2 border-2 border-darkgray bg-white">
           <p className="text-pixel-xs text-darkgray/70 mb-1">Avg Balance</p>
@@ -297,19 +307,19 @@ export default function WeeklySummary({ userId }: WeeklySummaryProps) {
             <p className="font-mono text-sm">Strong week. {workoutsCompleted} workouts completed.</p>
           </div>
         )}
-        {daysHitSteps >= 5 && (
+        {hasTracker('steps') && daysHitSteps >= 5 && (
           <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
             <Footprints size={24} className="text-darkgray" />
             <p className="font-mono text-sm">Hit 8,000 steps on {daysHitSteps} days.</p>
           </div>
         )}
-        {skincareConsistency >= 5 && (
+        {hasTracker('skincare') && skincareConsistency >= 5 && (
           <div className="p-3 bg-accent border-2 border-darkgray flex items-center gap-3">
             <Sparkles size={24} className="text-darkgray" />
             <p className="font-mono text-sm">Full skincare routine on {skincareConsistency} days.</p>
           </div>
         )}
-        {daysHitWaterGoal >= 5 && (
+        {hasTracker('water') && daysHitWaterGoal >= 5 && (
           <div className="p-3 bg-secondary border-2 border-darkgray flex items-center gap-3">
             <span className="text-2xl">💧</span>
             <p className="font-mono text-sm">Hydration goal met on {daysHitWaterGoal} days.</p>
