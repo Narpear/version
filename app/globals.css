@@ -20,8 +20,8 @@
   --color-lavender: #E0BBE4;
   --color-surface: #ffffff;
   --color-text: #4A4A4A;
-  --color-scrollbar-track: #FFF9F0;
-  --color-scrollbar-thumb: #FFB5E8;
+  --color-scrollbar-track: #ECDFD7;
+  --color-scrollbar-thumb: #BBBBBB;
 }
 
 /* Base Styles */
@@ -60,7 +60,7 @@ body::before {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.22;
+  opacity: 0.35;
 }
 
 /* Mobile overrides */
@@ -84,6 +84,11 @@ body::before {
   }
 }
 
+/* ── Slightly rounded corners on all bordered UI elements ── */
+.border-2.border-darkgray {
+  border-radius: 6px;
+}
+
 /* Pixel Button */
 .btn-pixel {
   padding: 0.75rem 1.5rem;
@@ -92,6 +97,7 @@ body::before {
   background-color: var(--color-primary);
   color: var(--color-text);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
   cursor: pointer;
   text-transform: uppercase;
@@ -110,6 +116,7 @@ body::before {
   background-color: var(--color-secondary);
   color: var(--color-text);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
   cursor: pointer;
   text-transform: uppercase;
@@ -128,6 +135,7 @@ body::before {
   background-color: var(--color-success);
   color: var(--color-text);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1);
   cursor: pointer;
   text-transform: uppercase;
@@ -145,6 +153,7 @@ body::before {
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
   padding: 1.5rem;
 }
@@ -153,6 +162,7 @@ body::before {
 .input-pixel {
   padding: 0.75rem 1rem;
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   background-color: var(--color-surface);
   color: var(--color-text);
   font-family: "VT323", monospace;
@@ -193,6 +203,7 @@ body::before {
   background: var(--color-background);
   color: var(--color-text);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   box-shadow: 3px 3px 0px 0px rgba(0,0,0,0.1);
   padding: 0.5rem 0.75rem;
   text-align: center;
@@ -229,6 +240,7 @@ body::before {
   font-size: 0.75rem;
   background-color: var(--color-accent);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
 }
 
 /* Progress Bar */
@@ -237,6 +249,7 @@ body::before {
   height: 2rem;
   background-color: var(--color-surface);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   position: relative;
   overflow: hidden;
 }
@@ -271,21 +284,22 @@ body::before {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: var(--color-scrollbar-track);
-  border: 2px solid var(--color-darkgray);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-scrollbar-thumb);
-  border: 2px solid var(--color-darkgray);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-secondary);
+  background: #999999;
 }
 
 /* ── Per-page accent colors ── */
@@ -653,6 +667,7 @@ body::before {
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   border: 2px solid var(--color-darkgray);
+  border-radius: 6px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   box-shadow: 8px 8px 0px 0px rgba(0,0,0,0.1);
