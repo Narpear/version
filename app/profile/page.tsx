@@ -11,10 +11,12 @@ import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress,
 import { useToast } from '@/components/ui/ToastProvider';
 import { Edit, X, Check } from 'lucide-react';
 import TrackerPicker from '@/components/TrackerPicker';
+import { useBgTheme } from '@/lib/useTheme';
 
 export default function ProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { bgTheme, applyBgTheme } = useBgTheme();
   const [user, setUser] = useState<User | null>(null);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,7 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('');
   const [editAge, setEditAge] = useState(0);
   const [editHeight, setEditHeight] = useState(0);
-  const [editGender, setEditGender] = useState<'male' | 'female'>('female');
+  const [editGender, setEditGender] = useState<'male' | 'female' | 'non-binary'>('female');
 
   // Goal form state
   const [goalType, setGoalType] = useState<'loss' | 'gain' | 'maintenance'>('loss');
@@ -326,11 +328,12 @@ export default function ProfilePage() {
                   <label className="block text-pixel-sm mb-2">Gender</label>
                   <select
                     value={editGender}
-                    onChange={e => setEditGender(e.target.value as 'male' | 'female')}
+                    onChange={e => setEditGender(e.target.value as 'male' | 'female' | 'non-binary')}
                     className="input-pixel w-full"
                   >
                     <option value="female">Female</option>
                     <option value="male">Male</option>
+                    <option value="non-binary">Non-binary</option>
                   </select>
                 </div>
                 <p className="font-mono text-xs text-darkgray/50">
@@ -421,6 +424,30 @@ export default function ProfilePage() {
         <Button onClick={handleSaveTrackers} disabled={savingTrackers} className="w-full mt-4">
           {savingTrackers ? 'Saving...' : 'Save Trackers'}
         </Button>
+      </Card>
+
+      {/* Background Theme Card */}
+      <Card title="Background Theme" className="mt-6">
+        <p className="font-mono text-sm mb-4 text-darkgray/70">
+          Choose the background image style across all pages.
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {([
+            { value: 'feminine',       label: 'Feminine' },
+            { value: 'masculine',      label: 'Masculine' },
+            { value: 'gender-neutral', label: 'Neutral' },
+          ] as const).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => applyBgTheme(value)}
+              className={`p-3 border-2 border-darkgray font-mono text-sm transition-all ${
+                bgTheme === value ? 'bg-primary' : 'bg-white hover:bg-lavender'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </Card>
 
       {/* Current Goal Display */}

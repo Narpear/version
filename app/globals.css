@@ -39,17 +39,45 @@ body {
 
 /* ── Page background images ── */
 :root                  { --page-bg: none; }
-[data-page="home"]     { --page-bg: url('/backgrounds/home.jpg'); }
-[data-page="gym"]      { --page-bg: url('/backgrounds/gym.jpg'); }
-[data-page="food"]     { --page-bg: url('/backgrounds/food.jpg'); }
-[data-page="water"]    { --page-bg: url('/backgrounds/water.jpg'); }
-[data-page="skincare"] { --page-bg: url('/backgrounds/skincare.jpg'); }
-[data-page="sleep"]    { --page-bg: url('/backgrounds/sleep.jpg'); }
-[data-page="steps"]    { --page-bg: url('/backgrounds/steps.jpg'); }
-[data-page="progress"] { --page-bg: url('/backgrounds/progress.jpg'); }
-[data-page="profile"]  { --page-bg: url('/backgrounds/profile.jpg'); }
-[data-page="books"]    { --page-bg: url('/backgrounds/books.jpg'); }
-[data-page="start"]    { --page-bg: url('/backgrounds/start.jpg'); }
+
+/* Default / feminine */
+[data-page="home"]     { --page-bg: url('/backgrounds/feminine/home.jpg'); }
+[data-page="gym"]      { --page-bg: url('/backgrounds/feminine/gym.jpg'); }
+[data-page="food"]     { --page-bg: url('/backgrounds/feminine/food.jpg'); }
+[data-page="water"]    { --page-bg: url('/backgrounds/feminine/water.jpg'); }
+[data-page="skincare"] { --page-bg: url('/backgrounds/feminine/skincare.jpg'); }
+[data-page="sleep"]    { --page-bg: url('/backgrounds/feminine/sleep.jpg'); }
+[data-page="steps"]    { --page-bg: url('/backgrounds/feminine/steps.jpg'); }
+[data-page="progress"] { --page-bg: url('/backgrounds/feminine/progress.jpg'); }
+[data-page="profile"]  { --page-bg: url('/backgrounds/feminine/profile.jpg'); }
+[data-page="books"]    { --page-bg: url('/backgrounds/feminine/books.jpg'); }
+[data-page="start"]    { --page-bg: url('/backgrounds/feminine/start.jpg'); }
+
+/* Masculine */
+[data-bg-theme="masculine"][data-page="home"]     { --page-bg: url('/backgrounds/masculine/home.jpg'); }
+[data-bg-theme="masculine"][data-page="gym"]      { --page-bg: url('/backgrounds/masculine/gym.jpg'); }
+[data-bg-theme="masculine"][data-page="food"]     { --page-bg: url('/backgrounds/masculine/food.jpg'); }
+[data-bg-theme="masculine"][data-page="water"]    { --page-bg: url('/backgrounds/masculine/water.jpg'); }
+[data-bg-theme="masculine"][data-page="skincare"] { --page-bg: url('/backgrounds/masculine/skincare.jpg'); }
+[data-bg-theme="masculine"][data-page="sleep"]    { --page-bg: url('/backgrounds/masculine/sleep.jpg'); }
+[data-bg-theme="masculine"][data-page="steps"]    { --page-bg: url('/backgrounds/masculine/steps.jpg'); }
+[data-bg-theme="masculine"][data-page="progress"] { --page-bg: url('/backgrounds/masculine/progress.jpg'); }
+[data-bg-theme="masculine"][data-page="profile"]  { --page-bg: url('/backgrounds/masculine/profile.jpg'); }
+[data-bg-theme="masculine"][data-page="books"]    { --page-bg: url('/backgrounds/masculine/books.jpg'); }
+[data-bg-theme="masculine"][data-page="start"]    { --page-bg: url('/backgrounds/masculine/start.jpg'); }
+
+/* Gender Neutral — alternates between feminine and masculine per page */
+[data-bg-theme="gender-neutral"][data-page="home"]     { --page-bg: url('/backgrounds/feminine/home.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="gym"]      { --page-bg: url('/backgrounds/masculine/gym.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="food"]     { --page-bg: url('/backgrounds/feminine/food.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="water"]    { --page-bg: url('/backgrounds/masculine/water.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="skincare"] { --page-bg: url('/backgrounds/feminine/skincare.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="sleep"]    { --page-bg: url('/backgrounds/masculine/sleep.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="steps"]    { --page-bg: url('/backgrounds/feminine/steps.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="progress"] { --page-bg: url('/backgrounds/masculine/progress.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="profile"]  { --page-bg: url('/backgrounds/feminine/profile.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="books"]    { --page-bg: url('/backgrounds/masculine/books.jpg'); }
+[data-bg-theme="gender-neutral"][data-page="start"]    { --page-bg: url('/backgrounds/feminine/start.jpg'); }
 
 body::before {
   content: '';

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { useBgTheme } from '@/lib/useTheme';
 import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints, Moon, BookOpen, ChevronDown } from 'lucide-react';
 
 const navItems = [
@@ -27,6 +28,7 @@ export default function Navigation() {
   const pathname = usePathname();
   const [selectedTrackers, setSelectedTrackers] = useState<string[]>(['food', 'gym', 'progress']);
   const [moreOpen, setMoreOpen] = useState(false);
+  useBgTheme(); // applies data-bg-theme on mount and keeps it in sync
   const moreRef = useRef<HTMLDivElement>(null);
 
   // Read selected trackers from localStorage

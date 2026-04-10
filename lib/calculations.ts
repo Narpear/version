@@ -15,11 +15,12 @@ export function calculateBMR(
   weightKg: number,
   heightCm: number,
   age: number,
-  gender: 'male' | 'female'
+  gender: 'male' | 'female' | 'non-binary'
 ): number {
   const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
-  const bmr = gender === 'male' ? base + 5 : base - 161;
-  return Math.round(bmr);
+  // Non-binary uses the average of male (+5) and female (-161) offsets = -78
+  const offset = gender === 'male' ? 5 : gender === 'female' ? -161 : -78;
+  return Math.round(base + offset);
 }
 
 // Net Intake = Calories In - Calories Out (from exercise)

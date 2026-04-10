@@ -4,7 +4,7 @@ export interface User {
   email: string;
   height_cm: number;
   age: number;
-  gender: 'male' | 'female';
+  gender: 'male' | 'female' | 'non-binary';
   created_at?: string;
   updated_at?: string;
   steps_goal?: number;
