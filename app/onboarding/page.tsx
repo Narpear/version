@@ -8,6 +8,7 @@ import Card from '@/components/ui/Card';
 import TrackerPicker from '@/components/TrackerPicker';
 import { supabase } from '@/lib/supabase';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal } from '@/lib/calculations';
+import { genderToBgTheme } from '@/lib/useTheme';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -56,6 +57,8 @@ export default function OnboardingPage() {
       // Update localStorage
       const updatedUser = { ...user, height_cm: height, age: age, gender: gender };
       localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('bg-theme', genderToBgTheme(gender));
+      document.documentElement.setAttribute('data-bg-theme', genderToBgTheme(gender));
       setUser(updatedUser);
 
       setStep(2);

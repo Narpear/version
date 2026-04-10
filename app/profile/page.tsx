@@ -11,7 +11,7 @@ import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress,
 import { useToast } from '@/components/ui/ToastProvider';
 import { Edit, X, Check } from 'lucide-react';
 import TrackerPicker from '@/components/TrackerPicker';
-import { useBgTheme } from '@/lib/useTheme';
+import { useBgTheme, genderToBgTheme } from '@/lib/useTheme';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -133,6 +133,7 @@ export default function ProfilePage() {
       const updatedUser = { ...user, name: editName, age: editAge, height_cm: editHeight, gender: editGender };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
+      if (editGender !== user.gender) applyBgTheme(genderToBgTheme(editGender));
       setEditingProfile(false);
       toast('Profile updated!');
     } catch (error) {
