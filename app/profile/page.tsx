@@ -428,30 +428,6 @@ export default function ProfilePage() {
         </Button>
       </Card>
 
-      {/* Background Theme Card */}
-      <Card title="Background Theme" className="mt-6">
-        <p className="font-mono text-sm mb-4 text-darkgray/70">
-          Choose the background image style across all pages.
-        </p>
-        <div className="grid grid-cols-3 gap-3">
-          {([
-            { value: 'feminine',       label: 'Feminine' },
-            { value: 'masculine',      label: 'Masculine' },
-            { value: 'gender-neutral', label: 'Neutral' },
-          ] as const).map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => applyBgTheme(value)}
-              className={`p-3 border-2 border-darkgray font-mono text-sm transition-all ${
-                bgTheme === value ? 'bg-primary' : 'bg-white hover:bg-lavender'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </Card>
-
       {/* Current Goal Display */}
       {activeGoal && (
         <Card title="Current Active Goal" className="mt-6">
