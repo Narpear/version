@@ -46,7 +46,7 @@ export default function Navigation() {
     // Re-read when profile page saves new trackers (same tab)
     window.addEventListener('trackersupdated', load);
     return () => window.removeEventListener('trackersupdated', load);
-  }, []);
+  }, [pathname]);
 
   // Set data-page attribute for per-page accent colours
   useEffect(() => {
