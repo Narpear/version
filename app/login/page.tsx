@@ -30,6 +30,7 @@ export default function LoginPage() {
       if (res.ok) {
         // Store user in localStorage (simple auth for now)
         localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.removeItem('needsOnboarding');
         router.push('/');
       } else {
         setError(data.error || 'Login failed');

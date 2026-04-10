@@ -228,6 +228,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('needsOnboarding');
     router.push('/login');
   };
 

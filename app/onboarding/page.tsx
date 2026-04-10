@@ -205,7 +205,7 @@ export default function OnboardingPage() {
                 <option value="non-binary">Non-binary</option>
               </select>
               <p className="text-pixel-xs text-darkgray/50 mt-1">
-                Used for BMR calculation. Non-binary uses an averaged formula.
+                Used for BMR calculation.
               </p>
             </div>
 
