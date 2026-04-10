@@ -89,7 +89,7 @@ export default function Navigation() {
 
   const navLinkClass = (active: boolean) =>
     `flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 border-darkgray transition-all ${
-      active ? 'shadow-pixel' : 'opacity-75 hover:opacity-100 hover:shadow-pixel'
+      active ? 'shadow-pixel' : 'opacity-90 hover:opacity-100 hover:shadow-pixel'
     }`;
 
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -140,7 +140,7 @@ export default function Navigation() {
                   <button
                     onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
                     className={`flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 border-darkgray transition-all bg-primary ${
-                      moreOpen ? 'shadow-pixel' : 'opacity-60 hover:opacity-100 hover:shadow-pixel'
+                      moreOpen ? 'shadow-pixel' : 'opacity-90 hover:opacity-100 hover:shadow-pixel'
                     }`}
                   >
                     <ChevronDown size={20} className="mb-1" />
@@ -195,7 +195,7 @@ export default function Navigation() {
             <Link
               href={homeItem.href}
               className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
-                isActive(homeItem.href) ? '' : 'opacity-50'
+                isActive(homeItem.href) ? '' : 'opacity-80'
               }`}
               style={{ backgroundColor: homeItem.color }}
             >
@@ -209,7 +209,7 @@ export default function Navigation() {
                 key={href}
                 href={href}
                 className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
-                  isActive(href) ? '' : 'opacity-70'
+                  isActive(href) ? '' : 'opacity-90'
                 }`}
                 style={{ backgroundColor: color }}
               >
@@ -224,7 +224,7 @@ export default function Navigation() {
                 <button
                   onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
                   className={`w-full flex flex-col items-center justify-center py-2 min-h-[52px] bg-primary transition-all ${
-                    moreOpen ? '' : 'opacity-50'
+                    moreOpen ? '' : 'opacity-80'
                   }`}
                 >
                   <ChevronDown size={16} />
@@ -257,7 +257,7 @@ export default function Navigation() {
             <Link
               href={profileItem.href}
               className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
-                isActive(profileItem.href) ? '' : 'opacity-50'
+                isActive(profileItem.href) ? '' : 'opacity-80'
               }`}
               style={{ backgroundColor: profileItem.color }}
             >
