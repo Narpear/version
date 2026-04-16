@@ -147,7 +147,7 @@ export default function Navigation() {
                     <span className="text-pixel-xs">More</span>
                   </button>
                   {moreOpen && (
-                    <div className="absolute top-full right-0 z-50 mt-1 border-2 border-darkgray bg-primary min-w-[140px]">
+                    <div className="absolute top-full right-0 z-50 mt-1 border-2 border-darkgray bg-primary min-w-35">
                       {overflowTrackers.map(({ href, icon: Icon, label, color }) => (
                         <Link
                           key={href}
@@ -194,7 +194,7 @@ export default function Navigation() {
             {/* Home */}
             <Link
               href={homeItem.href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
+              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all ${
                 isActive(homeItem.href) ? '' : 'opacity-80'
               }`}
               style={{ backgroundColor: homeItem.color }}
@@ -208,7 +208,7 @@ export default function Navigation() {
               <Link
                 key={href}
                 href={href}
-                className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
+                className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all ${
                   isActive(href) ? '' : 'opacity-90'
                 }`}
                 style={{ backgroundColor: color }}
@@ -223,7 +223,7 @@ export default function Navigation() {
               <div className="flex-1 relative" ref={hasOverflow ? undefined : moreRef}>
                 <button
                   onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
-                  className={`w-full flex flex-col items-center justify-center py-2 min-h-[52px] bg-primary transition-all ${
+                  className={`w-full flex flex-col items-center justify-center py-2 min-h-13 bg-primary transition-all ${
                     moreOpen ? '' : 'opacity-80'
                   }`}
                 >
@@ -231,7 +231,7 @@ export default function Navigation() {
                   <span className="font-mono text-[8px] mt-0.5 leading-none">More</span>
                 </button>
                 {moreOpen && (
-                  <div className="absolute bottom-full right-0 z-50 mb-1 border-2 border-darkgray bg-primary min-w-[140px]"
+                  <div className="absolute bottom-full right-0 z-50 mb-1 border-2 border-darkgray bg-primary min-w-35"
                     style={{ borderRadius: '12px', overflow: 'hidden' }}
                   >
                     {overflowTrackers.map(({ href, icon: Icon, label, color }) => (
@@ -256,7 +256,7 @@ export default function Navigation() {
             {/* Profile */}
             <Link
               href={profileItem.href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] transition-all ${
+              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all ${
                 isActive(profileItem.href) ? '' : 'opacity-80'
               }`}
               style={{ backgroundColor: profileItem.color }}
