@@ -110,7 +110,7 @@ function Modal({ isOpen, onClose, title, children }: {
             <X size={20} />
           </button>
         </div>
-        <div className="p-4 sm:p-6">{children}</div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );
@@ -966,19 +966,19 @@ export default function GymPage() {
       </div>
 
       {/* ── Action Buttons ── */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <Button className="w-full sm:w-auto" onClick={() => { resetForm(); setShowAddModal(true); }}>
+      <div className="flex gap-3 mb-6">
+        <Button onClick={() => { resetForm(); setShowAddModal(true); }}>
           <Plus size={16} className="inline mr-2" />
           Log Exercise
         </Button>
-        <Button className="w-full sm:w-auto" variant="secondary" onClick={() => setShowLibraryModal(true)}>
+        <Button variant="secondary" onClick={() => setShowLibraryModal(true)}>
           <BookOpen size={16} className="inline mr-2" />
           Exercise Library
         </Button>
       </div>
 
       {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         <Card className="bg-warning/10">
           <div className="flex items-center gap-2 mb-1">
             <Flame size={16} className="text-orange-500" />
@@ -1006,7 +1006,7 @@ export default function GymPage() {
             {[warmupDone, cooldownDone, meditationDone].filter(Boolean).length}/3 done
           </p>
         </Card>
-        <Card className="bg-blue-50 col-span-2 sm:col-span-1">
+        <Card className="bg-blue-50">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp size={16} className="text-blue-500" />
             <p className="text-pixel-xs text-darkgray/70">Today's Tonnage</p>
@@ -1215,8 +1215,8 @@ export default function GymPage() {
               <label className="block font-pixel text-sm mb-2 text-darkgray">Sets</label>
               <div className="space-y-2">
                 {exerciseSets.map((set, i) => (
-                  <div key={i} className="flex flex-wrap items-center gap-2 p-2 border-2 border-darkgray bg-gray-50">
-                    <span className="font-mono text-xs text-darkgray/50 w-8 sm:w-10 shrink-0">
+                  <div key={i} className="flex items-center gap-2 p-2 border-2 border-darkgray bg-gray-50">
+                    <span className="font-mono text-xs text-darkgray/50 w-10 shrink-0">
                       {i + 1}
                     </span>
                     <input
@@ -1225,20 +1225,20 @@ export default function GymPage() {
                       min={0}
                       step={0.5}
                       placeholder="kg"
-                      className="input-pixel w-16 sm:w-20 text-sm shrink-0"
+                      className="input-pixel w-20 text-sm"
                       onChange={e => {
                         const updated = [...exerciseSets];
                         updated[i] = { ...updated[i], weight_kg: parseFloat(e.target.value) || 0 };
                         setExerciseSets(updated);
                       }}
                     />
-                    <span className="font-mono text-xs text-darkgray/50 shrink-0">×</span>
+                    <span className="font-mono text-xs text-darkgray/50">×</span>
                     <input
                       type="number"
                       value={set.reps || ''}
                       min={0}
                       placeholder="reps"
-                      className="input-pixel w-16 sm:w-20 text-sm shrink-0"
+                      className="input-pixel w-20 text-sm"
                       onChange={e => {
                         const updated = [...exerciseSets];
                         updated[i] = { ...updated[i], reps: parseInt(e.target.value) || 0 };
@@ -1249,7 +1249,7 @@ export default function GymPage() {
                       type="text"
                       value={set.notes}
                       placeholder="note..."
-                      className="input-pixel flex-1 min-w-20 text-sm"
+                      className="input-pixel flex-1 text-sm min-w-0"
                       onChange={e => {
                         const updated = [...exerciseSets];
                         updated[i] = { ...updated[i], notes: e.target.value };
