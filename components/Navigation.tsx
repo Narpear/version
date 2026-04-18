@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useBgTheme } from '@/lib/useTheme';
-import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints, Moon, BookOpen, ChevronDown } from 'lucide-react';
+import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints, Moon, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 
 const navItems = [
   { href: '/',          icon: Home,       label: 'Home',     page: 'home',     color: '#F5BEDD' },
@@ -200,7 +200,7 @@ export default function Navigation() {
                 href={href}
                 onClick={() => setMoreOpen(false)}
                 className={`flex items-center gap-2 px-3 py-2 border-b-2 border-darkgray last:border-b-0 transition-all ${
-                  isActive(href) ? 'font-bold' : 'opacity-70 hover:opacity-100'
+                  isActive(href) ? 'font-bold' : ''
                 }`}
                 style={{ backgroundColor: color }}
               >
@@ -218,9 +218,7 @@ export default function Navigation() {
             {/* Home */}
             <Link
               href={homeItem.href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all ${
-                isActive(homeItem.href) ? '' : 'opacity-80'
-              }`}
+              className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all"
               style={{ backgroundColor: homeItem.color }}
             >
               <homeItem.icon size={16} />
@@ -232,9 +230,7 @@ export default function Navigation() {
               <Link
                 key={href}
                 href={href}
-                className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all ${
-                  isActive(href) ? '' : 'opacity-90'
-                }`}
+                className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all"
                 style={{ backgroundColor: color }}
               >
                 <Icon size={16} />
@@ -246,11 +242,9 @@ export default function Navigation() {
             {hasOverflow && (
               <button
                 onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
-                className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 bg-primary transition-all ${
-                  moreOpen ? '' : 'opacity-80'
-                }`}
+                className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 bg-primary transition-all"
               >
-                <ChevronDown size={16} />
+                <ChevronUp size={16} />
                 <span className="font-mono text-[8px] mt-0.5 leading-none">More</span>
               </button>
             )}
@@ -258,9 +252,7 @@ export default function Navigation() {
             {/* Profile */}
             <Link
               href={profileItem.href}
-              className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all ${
-                isActive(profileItem.href) ? '' : 'opacity-80'
-              }`}
+              className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all"
               style={{ backgroundColor: profileItem.color }}
             >
               <profileItem.icon size={16} />
