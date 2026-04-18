@@ -442,35 +442,6 @@ export default function ProgressPage() {
             </Card>
           </div>
 
-          <Card title="How It's Calculated (Resting BMR)" className="mb-6">
-            <div className="font-mono text-sm space-y-2">
-              <p>
-                BMR (Mifflin-St Jeor): (10 × {selectedWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
-                <strong>{bmr} cal</strong>
-              </p>
-              <p>
-                Net Intake: {caloriesIn} (food) - {caloriesOut} (gym) = <strong>{netIntake} cal</strong>
-              </p>
-              <p>
-                Apparent {getBalanceLabel()}: {bmr} (BMR) - {netIntake} (net) ={' '}
-                <strong style={{ color: apparentDeficit >= 0 ? '#2d7a2d' : '#c92a2a' }}>{apparentDeficit} cal</strong>
-              </p>
-              <p className="text-darkgray/70 text-xs mt-2">
-                This is what your food/gym tracking suggests. Your actual deficit/surplus is calculated from weight change.
-              </p>
-            </div>
-          </Card>
-
-          {bmi !== null && (
-            <Card title="BMI (Quick Check)" className="mb-6">
-              <p className="font-mono text-lg">
-                BMI: <span className="font-bold">{bmi.toFixed(1)}</span> ({bmiLabel(bmi)})
-              </p>
-              <p className="font-mono text-sm text-darkgray/70 mt-2">
-                Formula: weight(kg) / height(m)²
-              </p>
-            </Card>
-          )}
         </>
       )}
 
@@ -652,6 +623,40 @@ export default function ProgressPage() {
       {weightHistory.length > 0 && (
         <Card title="Progress" className="mb-6">
           <WeightChart data={weightHistory} goal={activeGoal} />
+        </Card>
+      )}
+
+      {/* BMI Quick Check */}
+      {bmi !== null && (
+        <Card title="BMI (Quick Check)" className="mb-6">
+          <p className="font-mono text-lg">
+            BMI: <span className="font-bold">{bmi.toFixed(1)}</span> ({bmiLabel(bmi)})
+          </p>
+          <p className="font-mono text-sm text-darkgray/70 mt-2">
+            Formula: weight(kg) / height(m)²
+          </p>
+        </Card>
+      )}
+
+      {/* How It's Calculated */}
+      {dailyEntry && dailyEntry.apparent_deficit !== null && dailyEntry.apparent_deficit !== undefined && (
+        <Card title="How It's Calculated (Resting BMR)" className="mb-6">
+          <div className="font-mono text-sm space-y-2">
+            <p>
+              BMR (Mifflin-St Jeor): (10 × {selectedWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
+              <strong>{bmr} cal</strong>
+            </p>
+            <p>
+              Net Intake: {caloriesIn} (food) - {caloriesOut} (gym) = <strong>{netIntake} cal</strong>
+            </p>
+            <p>
+              Apparent {getBalanceLabel()}: {bmr} (BMR) - {netIntake} (net) ={' '}
+              <strong style={{ color: apparentDeficit >= 0 ? '#2d7a2d' : '#c92a2a' }}>{apparentDeficit} cal</strong>
+            </p>
+            <p className="text-darkgray/70 text-xs mt-2">
+              This is what your food/gym tracking suggests. Your actual deficit/surplus is calculated from weight change.
+            </p>
+          </div>
         </Card>
       )}
 
