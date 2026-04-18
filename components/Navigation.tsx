@@ -30,6 +30,7 @@ export default function Navigation() {
   const [moreOpen, setMoreOpen] = useState(false);
   useBgTheme(); // applies data-bg-theme on mount and keeps it in sync
   const moreRef = useRef<HTMLDivElement>(null);
+  const moreRefMobile = useRef<HTMLDivElement>(null);
 
   // Read selected trackers from localStorage
   useEffect(() => {
@@ -64,9 +65,9 @@ export default function Navigation() {
   useEffect(() => {
     if (!moreOpen) return;
     const handler = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
+      const inDesktop = moreRef.current?.contains(e.target as Node);
+      const inMobile = moreRefMobile.current?.contains(e.target as Node);
+      if (!inDesktop && !inMobile) setMoreOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -186,6 +187,29 @@ export default function Navigation() {
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden flex justify-center"
         style={{ padding: '0 12px max(env(safe-area-inset-bottom), 12px) 12px' }}
       >
+        {/* More dropdown — outside overflow-hidden nav so it can pop upward */}
+        {hasOverflow && moreOpen && (
+          <div
+            ref={moreRefMobile}
+            className="absolute z-50 border-2 border-darkgray bg-primary min-w-35"
+            style={{ borderRadius: '12px', overflow: 'hidden', bottom: 'calc(100% - 4px)', right: '12px' }}
+          >
+            {overflowTrackers.map(({ href, icon: Icon, label, color }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMoreOpen(false)}
+                className={`flex items-center gap-2 px-3 py-2 border-b-2 border-darkgray last:border-b-0 transition-all ${
+                  isActive(href) ? 'font-bold' : 'opacity-70 hover:opacity-100'
+                }`}
+                style={{ backgroundColor: color }}
+              >
+                <Icon size={16} />
+                <span className="font-mono text-sm">{label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
         <nav
           className="w-full max-w-sm bg-primary border-2 border-darkgray overflow-hidden"
           style={{ borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
@@ -220,37 +244,15 @@ export default function Navigation() {
 
             {/* More button (mobile) */}
             {hasOverflow && (
-              <div className="flex-1 relative" ref={hasOverflow ? undefined : moreRef}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
-                  className={`w-full flex flex-col items-center justify-center py-2 min-h-13 bg-primary transition-all ${
-                    moreOpen ? '' : 'opacity-80'
-                  }`}
-                >
-                  <ChevronDown size={16} />
-                  <span className="font-mono text-[8px] mt-0.5 leading-none">More</span>
-                </button>
-                {moreOpen && (
-                  <div className="absolute bottom-full right-0 z-50 mb-1 border-2 border-darkgray bg-primary min-w-35"
-                    style={{ borderRadius: '12px', overflow: 'hidden' }}
-                  >
-                    {overflowTrackers.map(({ href, icon: Icon, label, color }) => (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setMoreOpen(false)}
-                        className={`flex items-center gap-2 px-3 py-2 border-b-2 border-darkgray last:border-b-0 transition-all ${
-                          isActive(href) ? 'font-bold' : 'opacity-70 hover:opacity-100'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      >
-                        <Icon size={16} />
-                        <span className="font-mono text-sm">{label}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
+                className={`flex-1 flex flex-col items-center justify-center py-2 min-h-13 bg-primary transition-all ${
+                  moreOpen ? '' : 'opacity-80'
+                }`}
+              >
+                <ChevronDown size={16} />
+                <span className="font-mono text-[8px] mt-0.5 leading-none">More</span>
+              </button>
             )}
 
             {/* Profile */}
