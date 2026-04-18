@@ -22,14 +22,6 @@ import {
 import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
-const activityLevels = [
-  { label: 'Sedentary', value: 1.2, desc: 'Little/no exercise' },
-  { label: 'Light', value: 1.375, desc: '1–3 days/week' },
-  { label: 'Moderate', value: 1.55, desc: '3–5 days/week' },
-  { label: 'Very Active', value: 1.725, desc: '6–7 days/week' },
-  { label: 'Extra Active', value: 1.9, desc: 'Physical job + daily exercise' },
-];
-
 export default function ProgressPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -40,12 +32,6 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [showProgressInfo, setShowProgressInfo] = useState(false);
-  const [activityMultiplier, setActivityMultiplier] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      return parseFloat(localStorage.getItem('activityMultiplier') || '1.2');
-    }
-    return 1.2;
-  });
 
   const [selectedWeight, setSelectedWeight] = useState(0);
 
@@ -189,10 +175,9 @@ export default function ProgressPage() {
       const caloriesIn = entryData?.total_calories_in || 0;
       const caloriesOut = entryData?.total_calories_out || 0;
 
-      const rawBmr = calculateBMR(selectedWeight, user.height_cm, user.age, user.gender);
-      const tdee = Math.round(rawBmr * activityMultiplier);
+      const bmr = calculateBMR(selectedWeight, user.height_cm, user.age, user.gender);
       const netIntake = calculateNetIntake(caloriesIn, caloriesOut);
-      const apparentDeficit = calculateApparentDeficit(tdee, netIntake);
+      const apparentDeficit = calculateApparentDeficit(bmr, netIntake);
 
       // Save/update daily entry with weight and apparent deficit
       if (entryData) {
@@ -200,7 +185,7 @@ export default function ProgressPage() {
           .from('daily_entries')
           .update({
             weight_kg: selectedWeight,
-            bmr: tdee,
+            bmr: bmr,
             net_intake: netIntake,
             apparent_deficit: apparentDeficit,
           })
@@ -210,7 +195,7 @@ export default function ProgressPage() {
           user_id: user.id,
           date: selectedDate,
           weight_kg: selectedWeight,
-          bmr: tdee,
+          bmr: bmr,
           total_calories_in: caloriesIn,
           total_calories_out: caloriesOut,
           net_intake: netIntake,
@@ -405,35 +390,6 @@ export default function ProgressPage() {
             )}
           </div>
         </div>
-
-        {/* Activity Level Multiplier */}
-        <div className="mt-4">
-          <p className="font-mono text-sm text-darkgray/70 mb-2">Activity Level (multiplier on BMR)</p>
-          <div className="flex flex-wrap gap-2">
-            {activityLevels.map((level) => (
-              <button
-                key={level.value}
-                onClick={() => {
-                  setActivityMultiplier(level.value);
-                  localStorage.setItem('activityMultiplier', String(level.value));
-                }}
-                className={`px-3 py-2 border-2 font-mono text-xs transition-colors ${
-                  activityMultiplier === level.value
-                    ? 'border-darkgray bg-primary text-darkgray font-bold'
-                    : 'border-darkgray/40 bg-white hover:bg-lavender'
-                }`}
-                title={level.desc}
-              >
-                <span>{level.label}</span>
-                <span className="ml-1 text-darkgray/60">×{level.value}</span>
-              </button>
-            ))}
-          </div>
-          <p className="font-mono text-xs text-darkgray/50 mt-1">
-            {activityLevels.find(l => l.value === activityMultiplier)?.desc} — TDEE = BMR × {activityMultiplier}
-          </p>
-        </div>
-
         <p className="font-mono text-sm text-darkgray/70 mt-4">
           Enter your weight and click Calculate to compute {isToday ? 'today\'s' : 'the'} {getBalanceLabel().toLowerCase()}. Click Recalculate if you update food or gym data.
         </p>
@@ -445,16 +401,16 @@ export default function ProgressPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <Card>
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-pixel-sm text-darkgray/70">TDEE</p>
+                <p className="text-pixel-sm text-darkgray/70">Resting BMR</p>
                 <span
                   className="inline-flex items-center justify-center cursor-help"
-                  title={`Total Daily Energy Expenditure = BMR × ${activityMultiplier} (${activityLevels.find(l => l.value === activityMultiplier)?.label}). Uses Mifflin-St Jeor formula.`}
+                  title="BMR is the calories your body burns at rest. We estimate it using the Mifflin-St Jeor formula."
                 >
                   <Info size={14} className="text-darkgray/70" />
                 </span>
               </div>
               <p className="font-mono text-2xl">{bmr}</p>
-              <p className="font-mono text-xs text-darkgray/50">cal/day ×{activityMultiplier}</p>
+              <p className="font-mono text-xs text-darkgray/50">cal/day</p>
             </Card>
             <Card>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Calories In</p>
@@ -486,7 +442,35 @@ export default function ProgressPage() {
             </Card>
           </div>
 
-          {/* How It's Calculated and BMI moved below Overall Progress — see below */}
+          <Card title="How It's Calculated (Resting BMR)" className="mb-6">
+            <div className="font-mono text-sm space-y-2">
+              <p>
+                BMR (Mifflin-St Jeor): (10 × {selectedWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
+                <strong>{bmr} cal</strong>
+              </p>
+              <p>
+                Net Intake: {caloriesIn} (food) - {caloriesOut} (gym) = <strong>{netIntake} cal</strong>
+              </p>
+              <p>
+                Apparent {getBalanceLabel()}: {bmr} (BMR) - {netIntake} (net) ={' '}
+                <strong style={{ color: apparentDeficit >= 0 ? '#2d7a2d' : '#c92a2a' }}>{apparentDeficit} cal</strong>
+              </p>
+              <p className="text-darkgray/70 text-xs mt-2">
+                This is what your food/gym tracking suggests. Your actual deficit/surplus is calculated from weight change.
+              </p>
+            </div>
+          </Card>
+
+          {bmi !== null && (
+            <Card title="BMI (Quick Check)" className="mb-6">
+              <p className="font-mono text-lg">
+                BMI: <span className="font-bold">{bmi.toFixed(1)}</span> ({bmiLabel(bmi)})
+              </p>
+              <p className="font-mono text-sm text-darkgray/70 mt-2">
+                Formula: weight(kg) / height(m)²
+              </p>
+            </Card>
+          )}
         </>
       )}
 
@@ -668,52 +652,6 @@ export default function ProgressPage() {
       {weightHistory.length > 0 && (
         <Card title="Progress" className="mb-6">
           <WeightChart data={weightHistory} goal={activeGoal} />
-        </Card>
-      )}
-
-      {/* BMI Quick Check */}
-      {bmi !== null && (
-        <Card title="BMI (Quick Check)" className="mb-6">
-          <p className="font-mono text-lg">
-            BMI: <span className="font-bold">{bmi.toFixed(1)}</span> ({bmiLabel(bmi)})
-          </p>
-          <p className="font-mono text-sm text-darkgray/70 mt-2">
-            Formula: weight(kg) / height(m)²
-          </p>
-        </Card>
-      )}
-
-      {/* How It's Calculated */}
-      {dailyEntry && dailyEntry.apparent_deficit !== null && dailyEntry.apparent_deficit !== undefined && (
-        <Card title="How It's Calculated" className="mb-6">
-          <div className="font-mono text-sm space-y-2">
-            {(() => {
-              const rawBmr = user
-                ? calculateBMR(selectedWeight || dailyEntry.weight_kg || 0, user.height_cm, user.age, user.gender)
-                : bmr;
-              return (
-                <>
-                  <p>
-                    BMR (Mifflin-St Jeor): (10 × {dailyEntry.weight_kg || selectedWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
-                    <strong>{rawBmr} cal</strong>
-                  </p>
-                  <p>
-                    TDEE: {rawBmr} × {activityMultiplier} ({activityLevels.find(l => l.value === activityMultiplier)?.label}) = <strong>{bmr} cal</strong>
-                  </p>
-                </>
-              );
-            })()}
-            <p>
-              Net Intake: {caloriesIn} (food) - {caloriesOut} (gym) = <strong>{netIntake} cal</strong>
-            </p>
-            <p>
-              Apparent {getBalanceLabel()}: {bmr} (TDEE) - {netIntake} (net) ={' '}
-              <strong style={{ color: apparentDeficit >= 0 ? '#2d7a2d' : '#c92a2a' }}>{apparentDeficit} cal</strong>
-            </p>
-            <p className="text-darkgray/70 text-xs mt-2">
-              This is what your food/gym tracking suggests. Your actual deficit/surplus is calculated from weight change.
-            </p>
-          </div>
         </Card>
       )}
 
