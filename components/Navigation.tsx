@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useBgTheme } from '@/lib/useTheme';
-import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints, Moon, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints } from 'lucide-react';
 
 const navItems = [
   { href: '/',          icon: Home,       label: 'Home',     page: 'home',     color: '#F5BEDD' },
@@ -13,24 +13,17 @@ const navItems = [
   { href: '/food',      icon: Utensils,   label: 'Food',     page: 'food',     color: '#BDEFD4' },
   { href: '/progress',  icon: Target,     label: 'Progress', page: 'progress', color: '#F5E8BD' },
   { href: '/water',     icon: Droplet,    label: 'Water',    page: 'water',    color: '#BDE8F5' },
-  { href: '/sleep',     icon: Moon,       label: 'Sleep',    page: 'sleep',    color: '#CBBDF5' },
   { href: '/skincare',  icon: Sparkles,   label: 'Skincare', page: 'skincare', color: '#E4BDF5' },
-  { href: '/books',     icon: BookOpen,   label: 'Books',    page: 'books',    color: '#F5D4BD' },
   { href: '/profile',   icon: User,       label: 'Profile',  page: 'profile',  color: '#BDF5E4' },
 ];
 
 const HIDDEN_PATHS = ['/login', '/signup', '/onboarding'];
 const ALWAYS_SHOW = ['home', 'profile'];
-// Max tracker pills to show before overflow (excludes home + profile)
-const MAX_VISIBLE_TRACKERS = 3;
 
 export default function Navigation() {
   const pathname = usePathname();
   const [selectedTrackers, setSelectedTrackers] = useState<string[]>(['food', 'gym', 'progress']);
-  const [moreOpen, setMoreOpen] = useState(false);
-  useBgTheme(); // applies data-bg-theme on mount and keeps it in sync
-  const moreRef = useRef<HTMLDivElement>(null);
-  const moreRefMobile = useRef<HTMLDivElement>(null);
+  useBgTheme();
 
   // Read selected trackers from localStorage
   useEffect(() => {
@@ -44,7 +37,6 @@ export default function Navigation() {
       }
     };
     load();
-    // Re-read when profile page saves new trackers (same tab)
     window.addEventListener('trackersupdated', load);
     return () => window.removeEventListener('trackersupdated', load);
   }, [pathname]);
@@ -61,18 +53,6 @@ export default function Navigation() {
     document.documentElement.setAttribute('data-page', match?.page ?? 'home');
   }, [pathname]);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!moreOpen) return;
-    const handler = (e: MouseEvent) => {
-      const inDesktop = moreRef.current?.contains(e.target as Node);
-      const inMobile = moreRefMobile.current?.contains(e.target as Node);
-      if (!inDesktop && !inMobile) setMoreOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [moreOpen]);
-
   if (HIDDEN_PATHS.includes(pathname)) return null;
 
   // Filter nav items based on selected trackers; home + profile always show
@@ -81,10 +61,6 @@ export default function Navigation() {
   );
 
   const trackerItems = filteredItems.filter(item => !ALWAYS_SHOW.includes(item.page));
-  const visibleTrackers = trackerItems.slice(0, MAX_VISIBLE_TRACKERS);
-  const overflowTrackers = trackerItems.slice(MAX_VISIBLE_TRACKERS);
-  const hasOverflow = overflowTrackers.length > 0;
-
   const homeItem = filteredItems.find(i => i.page === 'home')!;
   const profileItem = filteredItems.find(i => i.page === 'profile')!;
 
@@ -112,7 +88,6 @@ export default function Navigation() {
 
             {/* Nav links — desktop only */}
             <div className="hidden md:flex gap-1 md:gap-2 items-center">
-              {/* Home */}
               <Link
                 href={homeItem.href}
                 className={navLinkClass(isActive(homeItem.href))}
@@ -122,8 +97,7 @@ export default function Navigation() {
                 <span className="text-pixel-xs">{homeItem.label}</span>
               </Link>
 
-              {/* Visible tracker pills */}
-              {visibleTrackers.map(({ href, icon: Icon, label, color }) => (
+              {trackerItems.map(({ href, icon: Icon, label, color }) => (
                 <Link
                   key={href}
                   href={href}
@@ -135,40 +109,6 @@ export default function Navigation() {
                 </Link>
               ))}
 
-              {/* More dropdown (desktop) */}
-              {hasOverflow && (
-                <div className="relative" ref={moreRef}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
-                    className={`flex flex-col items-center justify-center w-16 h-14 md:w-20 md:h-18 border-2 border-darkgray transition-all bg-primary ${
-                      moreOpen ? 'shadow-pixel' : 'opacity-90 hover:opacity-100 hover:shadow-pixel'
-                    }`}
-                  >
-                    <ChevronDown size={20} className="mb-1" />
-                    <span className="text-pixel-xs">More</span>
-                  </button>
-                  {moreOpen && (
-                    <div className="absolute top-full right-0 z-50 mt-1 border-2 border-darkgray bg-primary min-w-35">
-                      {overflowTrackers.map(({ href, icon: Icon, label, color }) => (
-                        <Link
-                          key={href}
-                          href={href}
-                          onClick={() => setMoreOpen(false)}
-                          className={`flex items-center gap-2 px-3 py-2 border-b-2 border-darkgray last:border-b-0 transition-all ${
-                            isActive(href) ? 'font-bold' : 'opacity-70 hover:opacity-100'
-                          }`}
-                          style={{ backgroundColor: color }}
-                        >
-                          <Icon size={16} />
-                          <span className="font-mono text-sm">{label}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Profile */}
               <Link
                 href={profileItem.href}
                 className={navLinkClass(isActive(profileItem.href))}
@@ -187,35 +127,11 @@ export default function Navigation() {
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden flex justify-center"
         style={{ padding: '0 12px max(env(safe-area-inset-bottom), 12px) 12px' }}
       >
-        {/* More dropdown — outside overflow-hidden nav so it can pop upward */}
-        {hasOverflow && moreOpen && (
-          <div
-            ref={moreRefMobile}
-            className="absolute z-50 border-2 border-darkgray bg-primary min-w-35"
-            style={{ borderRadius: '12px', overflow: 'hidden', bottom: 'calc(100% - 4px)', right: '12px' }}
-          >
-            {overflowTrackers.map(({ href, icon: Icon, label, color }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setMoreOpen(false)}
-                className={`flex items-center gap-2 px-3 py-2 border-b-2 border-darkgray last:border-b-0 transition-all ${
-                  isActive(href) ? 'font-bold' : ''
-                }`}
-                style={{ backgroundColor: color }}
-              >
-                <Icon size={16} />
-                <span className="font-mono text-sm">{label}</span>
-              </Link>
-            ))}
-          </div>
-        )}
         <nav
           className="w-full max-w-sm bg-primary border-2 border-darkgray overflow-hidden"
           style={{ borderRadius: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
         >
           <div className="flex relative">
-            {/* Home */}
             <Link
               href={homeItem.href}
               className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all"
@@ -225,8 +141,7 @@ export default function Navigation() {
               <span className="font-mono text-[8px] mt-0.5 leading-none">{homeItem.label}</span>
             </Link>
 
-            {/* Visible trackers */}
-            {visibleTrackers.map(({ href, icon: Icon, label, color }) => (
+            {trackerItems.map(({ href, icon: Icon, label, color }) => (
               <Link
                 key={href}
                 href={href}
@@ -238,18 +153,6 @@ export default function Navigation() {
               </Link>
             ))}
 
-            {/* More button (mobile) */}
-            {hasOverflow && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setMoreOpen(o => !o); }}
-                className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 bg-primary transition-all"
-              >
-                <ChevronUp size={16} />
-                <span className="font-mono text-[8px] mt-0.5 leading-none">More</span>
-              </button>
-            )}
-
-            {/* Profile */}
             <Link
               href={profileItem.href}
               className="flex-1 flex flex-col items-center justify-center py-2 min-h-13 transition-all"

@@ -1,6 +1,6 @@
 'use client';
 
-import { Dumbbell, Utensils, Target, Droplet, Footprints, Moon, Sparkles, BookOpen } from 'lucide-react';
+import { Dumbbell, Utensils, Target, Droplet, Footprints, Sparkles } from 'lucide-react';
 
 export const ALL_TRACKERS = [
   { key: 'food',     label: 'Food',     icon: Utensils,   color: '#BDEFD4', required: true  },
@@ -8,9 +8,7 @@ export const ALL_TRACKERS = [
   { key: 'progress', label: 'Progress', icon: Target,     color: '#F5E8BD', required: true  },
   { key: 'water',    label: 'Water',    icon: Droplet,    color: '#BDE8F5', required: false },
   { key: 'steps',    label: 'Steps',    icon: Footprints, color: '#F5CFBD', required: false },
-  { key: 'sleep',    label: 'Sleep',    icon: Moon,       color: '#CBBDF5', required: false },
   { key: 'skincare', label: 'Skincare', icon: Sparkles,   color: '#E4BDF5', required: false },
-  { key: 'books',    label: 'Books',    icon: BookOpen,   color: '#F5D4BD', required: false },
 ] as const;
 
 interface TrackerPickerProps {
