@@ -195,7 +195,6 @@ export default function SkincarePage() {
           cleansing_done: stepKey === 'cleansing_done',
           serum_done: stepKey === 'serum_done',
           moisturizer_done: stepKey === 'moisturizer_done',
-          gua_sha_done: stepKey === 'gua_sha_done',
         };
 
         const { data, error } = await supabase
@@ -212,48 +211,6 @@ export default function SkincarePage() {
     } catch (error) {
       console.error('Error updating skincare:', error);
       alert('Failed to update skincare routine');
-    }
-  };
-
-  const guaShaToday = logs.some(log => log.gua_sha_done);
-
-  const toggleGuaSha = async () => {
-    if (!user) return;
-
-    try {
-      const existing = logs.find(l => l.gua_sha_done);
-      if (existing) {
-        const updated = { ...existing, gua_sha_done: false };
-        await supabase.from('skincare_logs').update({ gua_sha_done: false }).eq('id', existing.id);
-        setLogs(logs.map(l => (l.id === existing.id ? updated : l)));
-        toast('Saved!');
-        return;
-      }
-
-      const bedtimeLog = getRoutineLog('bedtime');
-      if (bedtimeLog) {
-        const updated = { ...bedtimeLog, gua_sha_done: true };
-        await supabase.from('skincare_logs').update({ gua_sha_done: true }).eq('id', bedtimeLog.id);
-        setLogs(logs.map(l => (l.id === bedtimeLog.id ? updated : l)));
-        toast('Saved!');
-      } else {
-        const newLog = {
-          user_id: user.id,
-          date: selectedDate,
-          time_of_day: 'bedtime',
-          cleansing_done: false,
-          serum_done: false,
-          moisturizer_done: false,
-          gua_sha_done: true,
-        };
-
-        const { data } = await supabase.from('skincare_logs').insert(newLog).select().single();
-        if (data) setLogs([...logs, data]);
-        toast('Saved!');
-      }
-    } catch (error) {
-      console.error('Error updating gua sha:', error);
-      alert('Failed to update gua sha');
     }
   };
 
@@ -325,31 +282,6 @@ export default function SkincarePage() {
 
       <p className="font-mono text-lg mb-6">Consistency is key for healthy, glowing skin</p>
 
-      {/* Gua Sha Card - Only show for today */}
-      {isToday && (
-        <Card title="Gua Sha (Daily Practice)" className="mb-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="font-mono text-lg mb-1">
-                Status: <span className={`font-bold ${guaShaToday ? 'text-success' : 'text-darkgray'}`}>
-                  {guaShaToday ? '✓ Done' : 'Not done'}
-                </span>
-              </p>
-              <p className="font-mono text-sm text-darkgray/70">Do it once anytime - morning or evening</p>
-            </div>
-            <button
-              onClick={toggleGuaSha}
-              className={`px-6 py-3 border-2 font-mono text-lg transition-all ${
-                guaShaToday 
-                  ? 'bg-success border-success text-darkgray font-bold' 
-                  : 'bg-white border-darkgray hover:bg-lavender'
-              }`}
-            >
-              {guaShaToday ? 'Undo' : 'Mark Done'}
-            </button>
-          </div>
-        </Card>
-      )}
 
       {/* Routine Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

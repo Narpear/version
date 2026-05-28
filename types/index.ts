@@ -97,7 +97,6 @@ export interface SkincareLog {
   cleansing_done: boolean;
   serum_done: boolean;
   moisturizer_done: boolean;
-  gua_sha_done: boolean;
 }
 
 export interface FoodTemplate {
