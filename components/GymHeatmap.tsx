@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { BarChart2, X } from 'lucide-react';
 
-type DayWorkout = { count: number; calories: number };
+type DayWorkout = {
+  count: number;
+  calories: number;
+  exercises: string[];
+  muscleGroups: string[];
+};
 type Gender = 'male' | 'female' | 'non-binary';
 
 function cellColor(calories: number, gender: Gender): string {
@@ -24,6 +30,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
   const [workouts, setWorkouts] = useState<Map<string, DayWorkout>>(new Map());
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<{ lines: string[]; x: number; y: number } | null>(null);
+  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -33,16 +40,22 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
 
       const { data } = await supabase
         .from('gym_logs')
-        .select('date, calories_burned')
+        .select('date, calories_burned, exercise_name, muscle_groups')
         .eq('user_id', userId)
         .gte('date', oneYearAgo.toISOString().split('T')[0])
         .lte('date', today);
 
       const map = new Map<string, DayWorkout>();
       for (const row of data || []) {
-        const e = map.get(row.date) ?? { count: 0, calories: 0 };
+        const e = map.get(row.date) ?? { count: 0, calories: 0, exercises: [], muscleGroups: [] };
         e.count++;
         e.calories += row.calories_burned ?? 0;
+        if (row.exercise_name && !e.exercises.includes(row.exercise_name)) {
+          e.exercises.push(row.exercise_name);
+        }
+        for (const mg of (row.muscle_groups ?? [])) {
+          if (!e.muscleGroups.includes(mg)) e.muscleGroups.push(mg);
+        }
         map.set(row.date, e);
       }
       setWorkouts(map);
@@ -80,22 +93,49 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
     return { weeks, monthLabels };
   }, []);
 
+  const stats = useMemo(() => {
+    const exerciseCounts = new Map<string, number>();
+    const muscleCounts = new Map<string, number>();
+
+    for (const wd of workouts.values()) {
+      for (const ex of wd.exercises) {
+        exerciseCounts.set(ex, (exerciseCounts.get(ex) ?? 0) + 1);
+      }
+      for (const mg of wd.muscleGroups) {
+        muscleCounts.set(mg, (muscleCounts.get(mg) ?? 0) + 1);
+      }
+    }
+
+    const sortedExercises = [...exerciseCounts.entries()].sort((a, b) => b[1] - a[1]);
+    const sortedMuscles   = [...muscleCounts.entries()].sort((a, b) => b[1] - a[1]);
+    const maxMuscle = sortedMuscles[0]?.[1] ?? 1;
+
+    return { sortedExercises, sortedMuscles, maxMuscle };
+  }, [workouts]);
+
   if (loading) return <p className="font-mono text-xs text-darkgray/50">Loading workout history...</p>;
 
   const totalDays = workouts.size;
   const totalCals = [...workouts.values()].reduce((s, d) => s + d.calories, 0);
-
-  // Compute cell size dynamically: fill container minus ~40px for row labels and ~24px for legend column
-  // We use CSS flex to make the grid fill the width naturally
-  const numWeeks = weeks.length;
+  const accentDark = gender === 'female' ? '#5E1A8F' : '#1A3A8F';
+  const accentMid  = gender === 'female' ? '#9444C8' : '#3366CC';
 
   return (
     <div className="relative w-full">
       {/* Header */}
-      <p className="font-mono text-sm text-darkgray/70 mb-4">
-        <strong>{totalDays}</strong> workout days &nbsp;·&nbsp;
-        <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
-      </p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="font-mono text-sm text-darkgray/70">
+          <strong>{totalDays}</strong> workout days &nbsp;·&nbsp;
+          <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
+        </p>
+        <button
+          onClick={() => setShowStats(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-darkgray bg-white hover:bg-lavender font-mono text-xs transition-all"
+        >
+          <BarChart2 size={13} />
+          Stats
+        </button>
+      </div>
 
       <div className="flex gap-2 items-start w-full">
         {/* Row labels */}
@@ -121,7 +161,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
             })}
           </div>
 
-          {/* Cells — flex row of columns */}
+          {/* Cells */}
           <div style={{ display: 'flex', gap: 3 }}>
             {weeks.map((week, wi) => (
               <div key={wi} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -137,10 +177,12 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
                       className="border border-darkgray/10 hover:scale-125 transition-transform"
                       onMouseEnter={e => {
                         const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                        const muscles = wd?.muscleGroups.join(', ') || '';
                         setTooltip({
                           lines: [
                             day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
                             wd ? `${wd.count} exercise${wd.count !== 1 ? 's' : ''} · ${wd.calories} cal` : 'Rest day',
+                            ...(muscles ? [muscles] : []),
                           ],
                           x: r.left + r.width / 2,
                           y: r.top,
@@ -172,11 +214,87 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 pointer-events-none bg-darkgray border-2 border-darkgray px-2 py-1 font-mono text-white"
-          style={{ left: tooltip.x, top: tooltip.y - 58, transform: 'translateX(-50%)', fontSize: 11 }}
+          className="fixed z-50 pointer-events-none bg-darkgray px-3 py-2 font-mono text-white"
+          style={{ left: tooltip.x, top: tooltip.y - 70, transform: 'translateX(-50%)', fontSize: 11, maxWidth: 240, borderRadius: 4 }}
         >
-          {tooltip.lines.map((t, i) => <p key={i} className={i === 0 ? 'font-bold' : ''}>{t}</p>)}
+          {tooltip.lines.map((t, i) => (
+            <p key={i} className={i === 0 ? 'font-bold' : 'text-white/80'} style={{ marginTop: i > 0 ? 2 : 0 }}>{t}</p>
+          ))}
         </div>
+      )}
+
+      {/* Stats modal */}
+      {showStats && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setShowStats(false)} />
+          <div className="fixed inset-0 z-51 flex items-center justify-center pointer-events-none">
+            <div className="bg-white border-2 border-darkgray w-full max-w-lg mx-4 pointer-events-auto" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              <div className="flex items-center justify-between px-5 py-4 border-b-2 border-darkgray">
+                <h3 className="font-mono font-bold text-base">Workout Stats</h3>
+                <button onClick={() => setShowStats(false)} className="p-1 hover:bg-lavender transition-all">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="px-5 py-4 space-y-6">
+                {/* Muscle groups */}
+                <div>
+                  <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-3">Muscle Groups</p>
+                  {stats.sortedMuscles.length === 0 ? (
+                    <p className="font-mono text-xs text-darkgray/40">No data yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {stats.sortedMuscles.map(([muscle, count]) => (
+                        <div key={muscle} className="flex items-center gap-3">
+                          <span className="font-mono text-xs w-32 shrink-0 capitalize">{muscle}</span>
+                          <div className="flex-1 h-4 bg-darkgray/10 rounded-sm overflow-hidden">
+                            <div
+                              style={{ width: `${(count / stats.maxMuscle) * 100}%`, backgroundColor: accentMid, height: '100%' }}
+                            />
+                          </div>
+                          <span className="font-mono text-xs text-darkgray/60 w-12 text-right">{count}×</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Exercises */}
+                <div>
+                  <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-3">Exercises</p>
+                  {stats.sortedExercises.length === 0 ? (
+                    <p className="font-mono text-xs text-darkgray/40">No data yet</p>
+                  ) : (
+                    <>
+                      <p className="font-mono text-xs text-darkgray/50 mb-2">Most frequent</p>
+                      <div className="space-y-1.5 mb-4">
+                        {stats.sortedExercises.slice(0, 5).map(([ex, count]) => (
+                          <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-1.5">
+                            <span className="font-mono text-xs">{ex}</span>
+                            <span className="font-mono text-xs font-bold" style={{ color: accentDark }}>{count}×</span>
+                          </div>
+                        ))}
+                      </div>
+                      {stats.sortedExercises.length > 5 && (
+                        <>
+                          <p className="font-mono text-xs text-darkgray/50 mb-2">Least frequent</p>
+                          <div className="space-y-1.5">
+                            {[...stats.sortedExercises].slice(-5).reverse().map(([ex, count]) => (
+                              <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-1.5">
+                                <span className="font-mono text-xs">{ex}</span>
+                                <span className="font-mono text-xs text-darkgray/50">{count}×</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
