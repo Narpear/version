@@ -225,76 +225,75 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
 
       {/* Stats modal */}
       {showStats && (
-        <>
-          <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setShowStats(false)} />
-          <div className="fixed inset-0 z-51 flex items-center justify-center pointer-events-none">
-            <div className="bg-white border-2 border-darkgray w-full max-w-lg mx-4 pointer-events-auto" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
-              <div className="flex items-center justify-between px-5 py-4 border-b-2 border-darkgray">
-                <h3 className="font-mono font-bold text-base">Workout Stats</h3>
-                <button onClick={() => setShowStats(false)} className="p-1 hover:bg-lavender transition-all">
-                  <X size={16} />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowStats(false)} />
+          <div className="relative bg-white border-2 border-darkgray w-full max-w-3xl" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-darkgray shrink-0">
+              <h3 className="font-mono font-bold text-base">Workout Stats</h3>
+              <button onClick={() => setShowStats(false)} className="p-1 hover:bg-lavender transition-all">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-6 py-5 space-y-7">
+              {/* Muscle groups — 2 columns */}
+              <div>
+                <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-4">Muscle Groups</p>
+                {stats.sortedMuscles.length === 0 ? (
+                  <p className="font-mono text-xs text-darkgray/40">No data yet</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
+                    {stats.sortedMuscles.map(([muscle, count]) => (
+                      <div key={muscle} className="flex items-center gap-2">
+                        <span className="font-mono text-xs w-28 shrink-0 capitalize">{muscle}</span>
+                        <div className="flex-1 h-3 bg-darkgray/10 rounded-sm overflow-hidden">
+                          <div style={{ width: `${(count / stats.maxMuscle) * 100}%`, backgroundColor: accentMid, height: '100%' }} />
+                        </div>
+                        <span className="font-mono text-xs text-darkgray/60 w-8 text-right shrink-0">{count}×</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="px-5 py-4 space-y-6">
-                {/* Muscle groups */}
-                <div>
-                  <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-3">Muscle Groups</p>
-                  {stats.sortedMuscles.length === 0 ? (
-                    <p className="font-mono text-xs text-darkgray/40">No data yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {stats.sortedMuscles.map(([muscle, count]) => (
-                        <div key={muscle} className="flex items-center gap-3">
-                          <span className="font-mono text-xs w-32 shrink-0 capitalize">{muscle}</span>
-                          <div className="flex-1 h-4 bg-darkgray/10 rounded-sm overflow-hidden">
-                            <div
-                              style={{ width: `${(count / stats.maxMuscle) * 100}%`, backgroundColor: accentMid, height: '100%' }}
-                            />
-                          </div>
-                          <span className="font-mono text-xs text-darkgray/60 w-12 text-right">{count}×</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Exercises */}
-                <div>
-                  <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-3">Exercises</p>
-                  {stats.sortedExercises.length === 0 ? (
-                    <p className="font-mono text-xs text-darkgray/40">No data yet</p>
-                  ) : (
-                    <>
+              {/* Exercises — 2 columns (most / least) */}
+              <div>
+                <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-4">Exercises</p>
+                {stats.sortedExercises.length === 0 ? (
+                  <p className="font-mono text-xs text-darkgray/40">No data yet</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
                       <p className="font-mono text-xs text-darkgray/50 mb-2">Most frequent</p>
-                      <div className="space-y-1.5 mb-4">
+                      <div className="space-y-1.5">
                         {stats.sortedExercises.slice(0, 5).map(([ex, count]) => (
-                          <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-1.5">
+                          <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-2">
                             <span className="font-mono text-xs">{ex}</span>
                             <span className="font-mono text-xs font-bold" style={{ color: accentDark }}>{count}×</span>
                           </div>
                         ))}
                       </div>
-                      {stats.sortedExercises.length > 5 && (
-                        <>
-                          <p className="font-mono text-xs text-darkgray/50 mb-2">Least frequent</p>
-                          <div className="space-y-1.5">
-                            {[...stats.sortedExercises].slice(-5).reverse().map(([ex, count]) => (
-                              <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-1.5">
-                                <span className="font-mono text-xs">{ex}</span>
-                                <span className="font-mono text-xs text-darkgray/50">{count}×</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
+                    </div>
+                    {stats.sortedExercises.length > 5 && (
+                      <div>
+                        <p className="font-mono text-xs text-darkgray/50 mb-2">Least frequent</p>
+                        <div className="space-y-1.5">
+                          {[...stats.sortedExercises].slice(-5).reverse().map(([ex, count]) => (
+                            <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-2">
+                              <span className="font-mono text-xs">{ex}</span>
+                              <span className="font-mono text-xs text-darkgray/50">{count}×</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
