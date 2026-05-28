@@ -1078,7 +1078,7 @@ export default function GymPage() {
 
       {/* ── Workout History Heatmap — always visible ── */}
       <Card title="Workout History" className="mb-8 mt-8">
-        <GymHeatmap userId={user!.id} />
+        <GymHeatmap userId={user!.id} gender={user!.gender} />
       </Card>
 
       {/* ── Progress Section ── */}

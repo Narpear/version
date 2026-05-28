@@ -4,16 +4,23 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 type DayWorkout = { count: number; calories: number };
+type Gender = 'male' | 'female' | 'non-binary';
 
-function cellColor(calories: number): string {
-  if (calories === 0) return '#DDDDE8';
-  if (calories < 100) return '#FFD6F0';
-  if (calories < 250) return '#FFB5E8';
-  if (calories < 450) return '#C9B1FF';
-  return '#9B5DE5';
+function cellColor(calories: number, gender: Gender): string {
+  const female = ['#F0E8F8', '#E0B8F0', '#C07FE0', '#9444C8', '#5E1A8F'];
+  const male   = ['#D8DDE6', '#A8C8F0', '#6699E8', '#3366CC', '#1A3A8F'];
+  const palette = gender === 'female' ? female : male;
+  if (calories === 0)   return palette[0];
+  if (calories < 100)   return palette[1];
+  if (calories < 250)   return palette[2];
+  if (calories < 450)   return palette[3];
+  return palette[4];
 }
 
-export default function GymHeatmap({ userId }: { userId: string }) {
+const LEGEND_CALS = [0, 60, 200, 380, 540];
+const ROW_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+
+export default function GymHeatmap({ userId, gender = 'male' }: { userId: string; gender?: Gender }) {
   const [workouts, setWorkouts] = useState<Map<string, DayWorkout>>(new Map());
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<{ lines: string[]; x: number; y: number } | null>(null);
@@ -21,14 +28,14 @@ export default function GymHeatmap({ userId }: { userId: string }) {
   useEffect(() => {
     (async () => {
       const today = new Date().toISOString().split('T')[0];
-      const yearAgo = new Date();
-      yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
       const { data } = await supabase
         .from('gym_logs')
         .select('date, calories_burned')
         .eq('user_id', userId)
-        .gte('date', yearAgo.toISOString().split('T')[0])
+        .gte('date', oneYearAgo.toISOString().split('T')[0])
         .lte('date', today);
 
       const map = new Map<string, DayWorkout>();
@@ -46,7 +53,6 @@ export default function GymHeatmap({ userId }: { userId: string }) {
   const { weeks, monthLabels } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const start = new Date(today);
     start.setDate(today.getDate() - 52 * 7);
     const dow = start.getDay();
@@ -66,15 +72,11 @@ export default function GymHeatmap({ userId }: { userId: string }) {
       }
       const monday = week[0];
       if (monday && monday.getMonth() !== lastMonth) {
-        monthLabels.push({
-          label: monday.toLocaleDateString('en-US', { month: 'short' }),
-          col: weeks.length,
-        });
+        monthLabels.push({ label: monday.toLocaleDateString('en-US', { month: 'short' }), col: weeks.length });
         lastMonth = monday.getMonth();
       }
       weeks.push(week);
     }
-
     return { weeks, monthLabels };
   }, []);
 
@@ -83,113 +85,97 @@ export default function GymHeatmap({ userId }: { userId: string }) {
   const totalDays = workouts.size;
   const totalCals = [...workouts.values()].reduce((s, d) => s + d.calories, 0);
 
-  const CELL = 13;
-  const GAP = 3;
-  const ROW_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
-  const LEGEND_CALS = [0, 60, 200, 380, 540];
+  // Compute cell size dynamically: fill container minus ~40px for row labels and ~24px for legend column
+  // We use CSS flex to make the grid fill the width naturally
+  const numWeeks = weeks.length;
 
   return (
-    <div className="relative">
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <p className="font-mono text-sm text-darkgray/70">
-          <strong>{totalDays}</strong> workout days &nbsp;·&nbsp; <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
-        </p>
-        <div className="flex items-center gap-1.5">
-          <span style={{ fontSize: 9 }} className="text-darkgray/50">Less</span>
-          {LEGEND_CALS.map((cal, i) => (
-            <div
-              key={i}
-              style={{ width: CELL, height: CELL, backgroundColor: cellColor(cal), borderRadius: 2 }}
-              className="border border-darkgray/10"
-            />
-          ))}
-          <span style={{ fontSize: 9 }} className="text-darkgray/50">More</span>
-        </div>
-      </div>
+    <div className="relative w-full">
+      {/* Header */}
+      <p className="font-mono text-sm text-darkgray/70 mb-4">
+        <strong>{totalDays}</strong> workout days &nbsp;·&nbsp;
+        <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
+      </p>
 
-      <div className="overflow-x-auto pb-2">
-        <div style={{ display: 'flex', gap: GAP, alignItems: 'flex-start' }}>
-          {/* Day-of-week labels */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, paddingTop: 22, minWidth: 26 }}>
-            {ROW_LABELS.map((lbl, i) => (
-              <div
-                key={i}
-                style={{ height: CELL, fontSize: 9, lineHeight: `${CELL}px`, color: '#9ca3af', textAlign: 'right', paddingRight: 3 }}
-              >
-                {lbl}
+      <div className="flex gap-2 items-start w-full">
+        {/* Row labels */}
+        <div className="flex flex-col shrink-0" style={{ paddingTop: 26, gap: 3 }}>
+          {ROW_LABELS.map((lbl, i) => (
+            <div key={i} style={{ height: 18, fontSize: 11, lineHeight: '18px', color: '#6b7280', textAlign: 'right', paddingRight: 4, minWidth: 30 }}>
+              {lbl}
+            </div>
+          ))}
+        </div>
+
+        {/* Grid */}
+        <div className="flex-1 min-w-0">
+          {/* Month labels */}
+          <div style={{ display: 'flex', gap: 3, height: 24, marginBottom: 2 }}>
+            {weeks.map((_, wi) => {
+              const ml = monthLabels.find(m => m.col === wi);
+              return (
+                <div key={wi} style={{ flex: 1, fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'visible' }}>
+                  {ml?.label ?? ''}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Cells — flex row of columns */}
+          <div style={{ display: 'flex', gap: 3 }}>
+            {weeks.map((week, wi) => (
+              <div key={wi} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {week.map((day, di) => {
+                  if (!day) return <div key={di} style={{ paddingBottom: '100%' }} />;
+                  const ds = day.toISOString().split('T')[0];
+                  const wd = workouts.get(ds);
+                  const cal = wd?.calories ?? 0;
+                  return (
+                    <div
+                      key={di}
+                      style={{ paddingBottom: '100%', position: 'relative', backgroundColor: cellColor(cal, gender), borderRadius: 3, cursor: 'default' }}
+                      className="border border-darkgray/10 hover:scale-125 transition-transform"
+                      onMouseEnter={e => {
+                        const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                        setTooltip({
+                          lines: [
+                            day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+                            wd ? `${wd.count} exercise${wd.count !== 1 ? 's' : ''} · ${wd.calories} cal` : 'Rest day',
+                          ],
+                          x: r.left + r.width / 2,
+                          y: r.top,
+                        });
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                    />
+                  );
+                })}
               </div>
             ))}
           </div>
+        </div>
 
-          <div>
-            {/* Month labels */}
-            <div style={{ display: 'flex', gap: GAP, height: 20, marginBottom: 2 }}>
-              {weeks.map((_, wi) => {
-                const ml = monthLabels.find(m => m.col === wi);
-                return (
-                  <div
-                    key={wi}
-                    style={{ width: CELL, fontSize: 9, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'visible' }}
-                  >
-                    {ml?.label ?? ''}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Week columns */}
-            <div style={{ display: 'flex', gap: GAP }}>
-              {weeks.map((week, wi) => (
-                <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
-                  {week.map((day, di) => {
-                    if (!day) return <div key={di} style={{ width: CELL, height: CELL }} />;
-                    const ds = day.toISOString().split('T')[0];
-                    const wd = workouts.get(ds);
-                    const cal = wd?.calories ?? 0;
-                    return (
-                      <div
-                        key={di}
-                        style={{
-                          width: CELL,
-                          height: CELL,
-                          backgroundColor: cellColor(cal),
-                          borderRadius: 2,
-                          cursor: 'default',
-                          transition: 'transform 0.1s',
-                        }}
-                        className="border border-darkgray/10 hover:scale-125"
-                        onMouseEnter={e => {
-                          const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                          setTooltip({
-                            lines: [
-                              day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
-                              wd
-                                ? `${wd.count} exercise${wd.count !== 1 ? 's' : ''} · ${wd.calories} cal burned`
-                                : 'Rest day',
-                            ],
-                            x: r.left + r.width / 2,
-                            y: r.top,
-                          });
-                        }}
-                        onMouseLeave={() => setTooltip(null)}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Vertical legend */}
+        <div className="flex flex-col items-center shrink-0" style={{ gap: 3, paddingTop: 26 }}>
+          <span style={{ fontSize: 10 }} className="text-darkgray/50 font-mono mb-1">More</span>
+          {[...LEGEND_CALS].reverse().map((cal, i) => (
+            <div
+              key={i}
+              style={{ width: 14, height: 14, backgroundColor: cellColor(cal, gender), borderRadius: 3 }}
+              className="border border-darkgray/10"
+            />
+          ))}
+          <span style={{ fontSize: 10 }} className="text-darkgray/50 font-mono mt-1">Less</span>
         </div>
       </div>
 
+      {/* Tooltip */}
       {tooltip && (
         <div
           className="fixed z-50 pointer-events-none bg-darkgray border-2 border-darkgray px-2 py-1 font-mono text-white"
-          style={{ left: tooltip.x, top: tooltip.y - 56, transform: 'translateX(-50%)', fontSize: 11 }}
+          style={{ left: tooltip.x, top: tooltip.y - 58, transform: 'translateX(-50%)', fontSize: 11 }}
         >
-          {tooltip.lines.map((t, i) => (
-            <p key={i} className={i === 0 ? 'font-bold' : ''}>{t}</p>
-          ))}
+          {tooltip.lines.map((t, i) => <p key={i} className={i === 0 ? 'font-bold' : ''}>{t}</p>)}
         </div>
       )}
     </div>
