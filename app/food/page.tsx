@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, FoodLog, FoodTemplate } from '@/types';
 import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit, Camera, UtensilsCrossed } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 import dynamic from 'next/dynamic';
@@ -15,6 +16,8 @@ import dynamic from 'next/dynamic';
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
   ssr: false,
 });
+
+type DayNutrition = { date: string; displayDate: string; calories: number; protein: number; carbs: number; fats: number };
 
 // Types
 interface MealTemplate {
@@ -99,6 +102,7 @@ export default function FoodPage() {
 
   const [templateSearch, setTemplateSearch] = useState('');
   const [mealSearch, setMealSearch] = useState('');
+  const [weeklyNutrition, setWeeklyNutrition] = useState<DayNutrition[]>([]);
 
   const today = new Date().toISOString().split('T')[0];
   const isToday = selectedDate === today;
@@ -114,6 +118,7 @@ export default function FoodPage() {
     loadFoodData(parsedUser.id, selectedDate);
     loadTemplates(parsedUser.id);
     loadMealTemplates(parsedUser.id);
+    loadWeeklyNutrition(parsedUser.id);
   }, [router, selectedDate]);
 
   const loadFoodData = async (userId: string, date: string) => {
@@ -134,6 +139,41 @@ export default function FoodPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadWeeklyNutrition = async (userId: string) => {
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 6);
+
+    const { data } = await supabase
+      .from('food_logs')
+      .select('date, calories, protein_g, carbs_g, fats_g')
+      .eq('user_id', userId)
+      .gte('date', startDate.toISOString().split('T')[0])
+      .lte('date', endDate.toISOString().split('T')[0]);
+
+    const byDate = new Map<string, DayNutrition>();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const ds = d.toISOString().split('T')[0];
+      byDate.set(ds, {
+        date: ds,
+        displayDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        calories: 0, protein: 0, carbs: 0, fats: 0,
+      });
+    }
+    for (const row of data || []) {
+      const e = byDate.get(row.date);
+      if (e) {
+        e.calories += row.calories || 0;
+        e.protein += row.protein_g || 0;
+        e.carbs += row.carbs_g || 0;
+        e.fats += row.fats_g || 0;
+      }
+    }
+    setWeeklyNutrition([...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)));
   };
 
   const loadTemplates = async (userId: string) => {
@@ -796,6 +836,54 @@ export default function FoodPage() {
             <Utensils size={48} className="mx-auto mb-4 text-darkgray/30" />
             <p className="font-mono text-lg text-darkgray/70">No meals logged for this day</p>
             <p className="font-mono text-sm text-darkgray/50 mt-2">Click "Add Food" to get started!</p>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Weekly Nutrition History ── */}
+      {weeklyNutrition.length > 0 && (
+        <Card title="Weekly Nutrition History" className="mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: 'Avg Calories/day', value: Math.round(weeklyNutrition.reduce((s, d) => s + d.calories, 0) / 7), unit: 'kcal', bg: 'bg-warning/10' },
+              { label: 'Avg Protein/day', value: Math.round(weeklyNutrition.reduce((s, d) => s + d.protein, 0) / 7), unit: 'g', bg: 'bg-blue-50' },
+              { label: 'Avg Carbs/day', value: Math.round(weeklyNutrition.reduce((s, d) => s + d.carbs, 0) / 7), unit: 'g', bg: 'bg-success/10' },
+              { label: 'Avg Fats/day', value: Math.round(weeklyNutrition.reduce((s, d) => s + d.fats, 0) / 7), unit: 'g', bg: 'bg-primary/10' },
+            ].map(({ label, value, unit, bg }) => (
+              <div key={label} className={`text-center p-3 border-2 border-darkgray ${bg}`}>
+                <p className="text-pixel-xs text-darkgray/70 mb-1">{label}</p>
+                <p className="font-mono text-2xl font-bold">{value}</p>
+                <p className="text-pixel-xs text-darkgray/50">{unit}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-6">
+            <p className="text-pixel-sm text-darkgray/70 mb-3">Calories — last 7 days</p>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={weeklyNutrition}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="displayDate" tick={{ fontFamily: 'monospace', fontSize: 10 }} />
+                <YAxis tick={{ fontFamily: 'monospace', fontSize: 10 }} />
+                <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} />
+                <Area type="monotone" dataKey="calories" name="Calories (kcal)" stroke="#FFB5E8" fill="#FFD6F0" strokeWidth={2} dot={{ r: 3 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div>
+            <p className="text-pixel-sm text-darkgray/70 mb-3">Macros — last 7 days (g)</p>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={weeklyNutrition}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="displayDate" tick={{ fontFamily: 'monospace', fontSize: 10 }} />
+                <YAxis tick={{ fontFamily: 'monospace', fontSize: 10 }} />
+                <Tooltip contentStyle={{ fontFamily: 'monospace', fontSize: 11 }} />
+                <Area type="monotone" dataKey="protein" name="Protein (g)" stroke="#B5DEFF" fill="#D6EDFF" strokeWidth={2} dot={{ r: 3 }} />
+                <Area type="monotone" dataKey="carbs" name="Carbs (g)" stroke="#C1FBA4" fill="#D8FCC7" strokeWidth={2} dot={{ r: 3 }} />
+                <Area type="monotone" dataKey="fats" name="Fats (g)" stroke="#FFCBA4" fill="#FFE5CC" strokeWidth={2} dot={{ r: 3 }} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </Card>
       )}

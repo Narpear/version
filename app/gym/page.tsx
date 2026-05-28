@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
+import GymHeatmap from '@/components/GymHeatmap';
 
 const MUSCLE_COLORS: Record<string, string> = {
   // CHEST (red)
@@ -978,7 +979,7 @@ export default function GymPage() {
       </div>
 
       {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <Card className="bg-warning/10">
           <div className="flex items-center gap-2 mb-1">
             <Flame size={16} className="text-orange-500" />
@@ -999,12 +1000,6 @@ export default function GymPage() {
             <p className="text-pixel-xs text-darkgray/70">Muscle Groups</p>
           </div>
           <p className="font-mono text-2xl font-bold">{muscleGroupsLogged.length}</p>
-        </Card>
-        <Card className="bg-secondary/10">
-          <p className="text-pixel-xs text-darkgray/70 mb-2">Checklist</p>
-          <p className="font-mono text-sm">
-            {[warmupDone, cooldownDone, meditationDone].filter(Boolean).length}/3 done
-          </p>
         </Card>
         <Card className="bg-blue-50">
           <div className="flex items-center gap-2 mb-1">
@@ -1083,7 +1078,12 @@ export default function GymPage() {
 
       {/* ── Progress Section ── */}
       {gymLogs.length > 0 && allHistory.length > 0 && (
-        <div className="mt-12">
+        <>
+          <Card title="Workout History" className="mb-8 mt-8">
+            <GymHeatmap userId={user.id} />
+          </Card>
+
+          <div className="mt-4">
           <div className="flex items-center gap-3 mb-1">
             <TrendingUp size={22} />
             <h2 className="heading-pixel text-2xl">Progress</h2>
@@ -1116,6 +1116,7 @@ export default function GymPage() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* ── Add / Edit Modal ── */}

@@ -19,7 +19,7 @@ import {
   getApparentDeficitMessage,
   formatDeficitSurplus,
 } from '@/lib/calculations';
-import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 
 export default function ProgressPage() {
@@ -32,6 +32,104 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [showProgressInfo, setShowProgressInfo] = useState(false);
+  const [showCalcSettingsModal, setShowCalcSettingsModal] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [stepsCount, setStepsCount] = useState(0);
+
+  type CalcSettings = { bmrMultiplier: number; includeGym: boolean; includeSteps: boolean };
+  const defaultSettings: CalcSettings = { bmrMultiplier: 1.0, includeGym: false, includeSteps: false };
+
+  const [calcSettings, setCalcSettings] = useState<CalcSettings>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('progress_calc_settings');
+      if (saved) return JSON.parse(saved);
+    }
+    return defaultSettings;
+  });
+
+  // draft is only used inside the modal — committed to calcSettings on Save
+  const [draft, setDraft] = useState<CalcSettings>(calcSettings);
+
+  const openSettingsModal = () => {
+    setDraft(calcSettings);
+    setShowCalcSettingsModal(true);
+  };
+
+  const handleSaveSettings = async () => {
+    if (!user) return;
+    setSavingSettings(true);
+    try {
+      // Commit draft → calcSettings + persist
+      setCalcSettings(draft);
+      localStorage.setItem('progress_calc_settings', JSON.stringify(draft));
+      await supabase.from('users').update({
+        calc_bmr_multiplier: draft.bmrMultiplier,
+        calc_include_gym: draft.includeGym,
+        calc_include_steps: draft.includeSteps,
+      }).eq('id', user.id);
+
+      // Fetch all previously calculated daily entries
+      const { data: entries } = await supabase
+        .from('daily_entries')
+        .select('id, date, bmr, total_calories_in, total_calories_out')
+        .eq('user_id', user.id)
+        .not('bmr', 'is', null);
+
+      if (entries && entries.length > 0) {
+        const { data: stepsLogs } = await supabase
+          .from('steps_logs')
+          .select('date, steps')
+          .eq('user_id', user.id);
+
+        const stepsMap = new Map<string, number>();
+        for (const s of stepsLogs || []) stepsMap.set(s.date, s.steps);
+
+        await Promise.all(entries.map(entry => {
+          const effectiveBMR = Math.round((entry.bmr || 0) * draft.bmrMultiplier);
+          const gymCals = draft.includeGym ? (entry.total_calories_out || 0) : 0;
+          const stepsCals = draft.includeSteps
+            ? Math.round((stepsMap.get(entry.date) || 0) * 0.045) : 0;
+          const netIntake = (entry.total_calories_in || 0) - gymCals - stepsCals;
+          const apparentDeficit = effectiveBMR - netIntake;
+          return supabase
+            .from('daily_entries')
+            .update({ apparent_deficit: apparentDeficit, net_intake: netIntake })
+            .eq('id', entry.id);
+        }));
+
+        if (activeGoal) {
+          const { data: updatedEntries } = await supabase
+            .from('daily_entries')
+            .select('apparent_deficit')
+            .eq('user_id', user.id)
+            .gte('date', activeGoal.start_date)
+            .not('apparent_deficit', 'is', null);
+          const cumulative = (updatedEntries || []).reduce((s, e) => s + (e.apparent_deficit || 0), 0);
+          await supabase.from('goals').update({ cumulative_apparent_deficit: cumulative }).eq('id', activeGoal.id);
+        }
+
+        toast(`Recalculated ${entries.length} day${entries.length !== 1 ? 's' : ''}!`);
+      } else {
+        toast('Settings saved!');
+      }
+
+      await loadData(user.id, selectedDate);
+      setShowCalcSettingsModal(false);
+    } catch {
+      toast('Failed to save settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const bmrActivityLabel = (m: number) => {
+    if (m <= 1.05) return 'Sedentary (resting only)';
+    if (m <= 1.275) return 'Very light activity';
+    if (m <= 1.46) return 'Light activity';
+    if (m <= 1.6) return 'Moderate activity';
+    if (m <= 1.8) return 'Very active';
+    return 'Extremely active';
+  };
 
   const [selectedWeight, setSelectedWeight] = useState(0);
 
@@ -50,6 +148,26 @@ export default function ProgressPage() {
 
     const parsedUser = JSON.parse(userData);
     setUser(parsedUser);
+
+    // Load persisted calculation settings from DB, fall back to localStorage
+    supabase
+      .from('users')
+      .select('calc_bmr_multiplier, calc_include_gym, calc_include_steps')
+      .eq('id', parsedUser.id)
+      .single()
+      .then(({ data }) => {
+        if (data && data.calc_bmr_multiplier !== null) {
+          const settings = {
+            bmrMultiplier: data.calc_bmr_multiplier ?? 1.0,
+            includeGym: data.calc_include_gym ?? false,
+            includeSteps: data.calc_include_steps ?? false,
+          };
+          setCalcSettings(settings);
+          setDraft(settings);
+          localStorage.setItem('progress_calc_settings', JSON.stringify(settings));
+        }
+      });
+
     loadData(parsedUser.id, selectedDate);
   }, [router, selectedDate]);
 
@@ -133,6 +251,15 @@ export default function ProgressPage() {
         setSelectedWeight(lastWeightEntry?.weight_kg || 0);
       }
 
+      // Load steps for selected date
+      const { data: stepsData } = await supabase
+        .from('steps_logs')
+        .select('steps')
+        .eq('user_id', userId)
+        .eq('date', date)
+        .single();
+      setStepsCount(stepsData?.steps || 0);
+
       // Load ALL weight history
       const { data: historyData } = await supabase
         .from('daily_entries')
@@ -175,9 +302,13 @@ export default function ProgressPage() {
       const caloriesIn = entryData?.total_calories_in || 0;
       const caloriesOut = entryData?.total_calories_out || 0;
 
-      const bmr = calculateBMR(selectedWeight, user.height_cm, user.age, user.gender);
-      const netIntake = calculateNetIntake(caloriesIn, caloriesOut);
-      const apparentDeficit = calculateApparentDeficit(bmr, netIntake);
+      const baseBMR = calculateBMR(selectedWeight, user.height_cm, user.age, user.gender);
+      const effectiveBMR = Math.round(baseBMR * calcSettings.bmrMultiplier);
+      const gymCalories = calcSettings.includeGym ? caloriesOut : 0;
+      const stepsCalories = calcSettings.includeSteps ? Math.round(stepsCount * 0.045) : 0;
+      const netIntake = calculateNetIntake(caloriesIn, gymCalories + stepsCalories);
+      const apparentDeficit = calculateApparentDeficit(effectiveBMR, netIntake);
+      const bmr = baseBMR;
 
       // Save/update daily entry with weight and apparent deficit
       if (entryData) {
@@ -369,17 +500,19 @@ export default function ProgressPage() {
 
       {/* Weight Input & Calculate Button */}
       <Card title={`${isToday ? 'Today\'s' : 'Day\'s'} Weight & Calculation`} className="mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            type="number"
-            label={`Weight for ${isToday ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (kg)`}
-            value={selectedWeight}
-            onChange={(e) => setSelectedWeight(parseFloat(e.target.value))}
-            placeholder="Enter your weight"
-            step={0.1}
-            min={0}
-          />
-          <div className="flex items-end gap-4 mt-7">
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div className="flex-1">
+            <Input
+              type="number"
+              label={`Weight for ${isToday ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (kg)`}
+              value={selectedWeight}
+              onChange={(e) => setSelectedWeight(parseFloat(e.target.value))}
+              placeholder="Enter your weight"
+              step={0.1}
+              min={0}
+            />
+          </div>
+          <div className="flex items-center gap-4 pb-0.5">
             <Button onClick={handleCalculate} disabled={calculating || selectedWeight <= 0} className="flex-1">
               {calculating ? 'Calculating...' : dailyEntry?.apparent_deficit !== undefined && dailyEntry?.apparent_deficit !== null ? 'Recalculate' : `Calculate ${getBalanceLabel()}`}
             </Button>
@@ -447,7 +580,10 @@ export default function ProgressPage() {
 
       {/* Overall Progress */}
       {activeGoal && (
-        <Card title="Overall Progress to Goal" className="mb-6">
+        <Card
+          title="Overall Progress to Goal"
+          className="mb-6"
+        >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
             <div>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Start Weight</p>
@@ -562,13 +698,23 @@ export default function ProgressPage() {
 
           {/* Info Section */}
           <div className="mt-6 border-t-2 border-darkgray/20 pt-4">
-            <button
-              onClick={() => setShowProgressInfo(!showProgressInfo)}
-              className="flex items-center gap-2 text-pixel-sm text-primary hover:text-primary/80 transition-colors"
-            >
-              <Info size={16} />
-              <span className="underline">What's the difference between Apparent and Actual?</span>
-            </button>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
+              <button
+                onClick={() => setShowProgressInfo(!showProgressInfo)}
+                className="flex items-center gap-2 text-pixel-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                <Info size={16} />
+                <span className="underline">What's the difference between Apparent and Actual?</span>
+              </button>
+              <button
+                type="button"
+                onClick={openSettingsModal}
+                className="flex items-center gap-1.5 text-pixel-sm text-darkgray/60 hover:text-darkgray transition-colors"
+              >
+                <Settings size={14} />
+                <span className="underline">Calculation settings</span>
+              </button>
+            </div>
 
             {showProgressInfo && (
               <div className="mt-4 p-4 bg-accent/30 border-2 border-darkgray rounded-lg">
@@ -705,6 +851,128 @@ export default function ProgressPage() {
             </p>
           </div>
         </Card>
+      )}
+
+      {/* ── Calculation Settings Modal ── */}
+      {showCalcSettingsModal && (
+        <>
+          {/* Backdrop — own layer, below modal */}
+          <div
+            className="fixed inset-0 bg-black/50"
+            style={{ zIndex: 50 }}
+            onClick={() => !savingSettings && setShowCalcSettingsModal(false)}
+          />
+          {/* Modal — own layer, above backdrop, pointer-events only on content */}
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
+            style={{ zIndex: 51 }}
+          >
+          <div className="bg-white border-4 border-darkgray max-w-md w-full shadow-pixel pointer-events-auto">
+            <div className="sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
+              <h2 className="heading-pixel text-xl flex items-center gap-2">
+                <Settings size={18} /> Calculation Settings
+              </h2>
+              <button
+                onClick={() => setShowCalcSettingsModal(false)}
+                disabled={savingSettings}
+                className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* BMR Multiplier */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-pixel-sm text-darkgray/80">BMR Activity Multiplier</p>
+                  <span className="font-mono text-base font-bold">{calcSettings.bmrMultiplier.toFixed(2)}×</span>
+                </div>
+                <input
+                  type="range"
+                  min={1.0}
+                  max={2.0}
+                  step={0.025}
+                  value={draft.bmrMultiplier}
+                  onChange={e => setDraft(d => ({ ...d, bmrMultiplier: parseFloat(e.target.value) }))}
+                  className="w-full accent-primary mb-1"
+                />
+                <div className="flex justify-between text-pixel-xs text-darkgray/40">
+                  <span>1.0× Sedentary</span>
+                  <span className="font-mono text-xs text-darkgray/70">{bmrActivityLabel(draft.bmrMultiplier)}</span>
+                  <span>2.0× Extreme</span>
+                </div>
+                <p className="text-pixel-xs text-darkgray/50 mt-2">
+                  Resting BMR ({bmr} cal) × {draft.bmrMultiplier.toFixed(2)} = <strong>{Math.round(bmr * draft.bmrMultiplier)} cal effective</strong>
+                </p>
+              </div>
+
+              {/* Include Gym */}
+              <button
+                type="button"
+                onClick={() => setDraft(d => ({ ...d, includeGym: !d.includeGym }))}
+                className={`w-full p-3 border-2 text-left transition-all ${
+                  draft.includeGym ? 'border-success' : 'border-darkgray bg-white hover:bg-lavender'
+                }`}
+                style={{ backgroundColor: draft.includeGym ? '#C1FBA4' : undefined }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 border-[3px] flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: draft.includeGym ? '#2d2d2d' : '#ffffff',
+                      borderColor: draft.includeGym ? '#2d2d2d' : '#4A4A4A',
+                    }}
+                  >
+                    {draft.includeGym && <span className="text-white text-xl font-black leading-none">✓</span>}
+                  </div>
+                  <div>
+                    <p className="font-mono text-sm font-bold">Include gym calories burned</p>
+                    <p className="text-pixel-xs text-darkgray/60">Subtracts workout calories from net intake</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Include Steps */}
+              <button
+                type="button"
+                onClick={() => setDraft(d => ({ ...d, includeSteps: !d.includeSteps }))}
+                className={`w-full p-3 border-2 text-left transition-all ${
+                  draft.includeSteps ? 'border-success' : 'border-darkgray bg-white hover:bg-lavender'
+                }`}
+                style={{ backgroundColor: draft.includeSteps ? '#C1FBA4' : undefined }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 border-[3px] flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: draft.includeSteps ? '#2d2d2d' : '#ffffff',
+                      borderColor: draft.includeSteps ? '#2d2d2d' : '#4A4A4A',
+                    }}
+                  >
+                    {draft.includeSteps && <span className="text-white text-xl font-black leading-none">✓</span>}
+                  </div>
+                  <div>
+                    <p className="font-mono text-sm font-bold">Include steps calories burned</p>
+                    <p className="text-pixel-xs text-darkgray/60">≈45 cal per 1,000 steps</p>
+                  </div>
+                </div>
+              </button>
+
+              <p className="text-pixel-xs text-darkgray/40 italic border-t-2 border-darkgray/10 pt-4">
+                Saving will recalculate every previously tracked day using these settings.
+              </p>
+
+              <button
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="w-full btn-pixel-success py-3 font-mono font-bold text-base disabled:opacity-60"
+              >
+                {savingSettings ? 'Recalculating all days…' : 'Save & Recalculate All'}
+              </button>
+            </div>
+          </div>
+          </div>
+        </>
       )}
     </div>
   );

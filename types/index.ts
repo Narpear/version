@@ -9,6 +9,9 @@ export interface User {
   updated_at?: string;
   steps_goal?: number;
   selected_trackers?: string[];
+  calc_bmr_multiplier?: number;
+  calc_include_gym?: boolean;
+  calc_include_steps?: boolean;
 }
 
 export interface Goal {

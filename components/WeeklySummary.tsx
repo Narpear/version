@@ -155,6 +155,8 @@ export default function WeeklySummary({ userId, selectedTrackers = ['food', 'gym
   }
 
   const consistencyScore = Math.round((daysLogged / 7) * 100);
+  const daysWithCalc = weekData.filter(d => d.apparent_deficit !== null && d.apparent_deficit !== undefined).length;
+  const caloricGoalScore = Math.round((daysHitGoal / 7) * 100);
   const healthyMealPercent = mealsLogged > 0 ? Math.round((healthyMeals / mealsLogged) * 100) : 0;
 
   const getGoalDescription = () => {
@@ -254,26 +256,61 @@ export default function WeeklySummary({ userId, selectedTrackers = ['food', 'gym
         </div>
       </div>
 
-      {/* Consistency Score */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-pixel-sm">Consistency Score</p>
-          <p className="text-pixel-sm font-bold">{consistencyScore}%</p>
-        </div>
-        <div className="progress-pixel h-6">
-          <div
-            className="h-full transition-all flex items-center justify-center"
-            style={{
-              width: `${consistencyScore}%`,
-              backgroundColor: consistencyScore >= 80 ? '#C1FBA4' : consistencyScore >= 50 ? '#FFF2CC' : '#FFB5E8',
-              borderRight: consistencyScore > 0 ? '4px solid #4A4A4A' : 'none',
-            }}
-          >
-            {consistencyScore > 10 && (
-              <span className="font-mono text-xs text-darkgray font-bold">{consistencyScore}%</span>
-            )}
+      {/* Consistency Scores */}
+      <div className="mb-4 space-y-4">
+        {/* Logging Consistency */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <p className="text-pixel-sm">Logging Consistency</p>
+            <p className="text-pixel-sm font-bold">{consistencyScore}%</p>
           </div>
+          <div className="progress-pixel h-6">
+            <div
+              className="h-full transition-all flex items-center justify-center"
+              style={{
+                width: `${consistencyScore}%`,
+                backgroundColor: consistencyScore >= 80 ? '#C1FBA4' : consistencyScore >= 50 ? '#FFF2CC' : '#FFB5E8',
+                borderRight: consistencyScore > 0 ? '4px solid #4A4A4A' : 'none',
+              }}
+            >
+              {consistencyScore > 10 && (
+                <span className="font-mono text-xs text-darkgray font-bold">{consistencyScore}%</span>
+              )}
+            </div>
+          </div>
+          <p className="text-pixel-xs text-darkgray/50 mt-1">{daysLogged}/7 days logged any activity</p>
         </div>
+
+        {/* Caloric Goal Consistency */}
+        {activeGoal && (
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-pixel-sm">
+                {goalType === 'loss' ? 'Deficit' : goalType === 'gain' ? 'Surplus' : 'Balance'} Goal Consistency
+              </p>
+              <p className="text-pixel-sm font-bold">{caloricGoalScore}%</p>
+            </div>
+            <div className="progress-pixel h-6">
+              <div
+                className="h-full transition-all flex items-center justify-center"
+                style={{
+                  width: `${caloricGoalScore}%`,
+                  backgroundColor: caloricGoalScore >= 80 ? '#C1FBA4' : caloricGoalScore >= 50 ? '#FFF2CC' : '#FFB5E8',
+                  borderRight: caloricGoalScore > 0 ? '4px solid #4A4A4A' : 'none',
+                }}
+              >
+                {caloricGoalScore > 10 && (
+                  <span className="font-mono text-xs text-darkgray font-bold">{caloricGoalScore}%</span>
+                )}
+              </div>
+            </div>
+            <p className="text-pixel-xs text-darkgray/50 mt-1">
+              {daysHitGoal}/7 days hit {getGoalDescription()}
+              {daysWithCalc < 7 && daysWithCalc > 0 && ` · only ${daysWithCalc} days calculated`}
+              {daysWithCalc === 0 && ' · calculate your deficit on the Progress page'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Achievements */}

@@ -313,7 +313,7 @@ export default function HomePage() {
           <Link href="/progress">
             <button className="w-full btn-pixel-success flex items-center justify-center gap-2">
               <TrendingUp size={16} />
-              <span>Progress</span>
+              <span>Log Progress</span>
             </button>
           </Link>
         </div>
