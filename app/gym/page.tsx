@@ -1076,13 +1076,14 @@ export default function GymPage() {
         </Card>
       )}
 
+      {/* ── Workout History Heatmap — always visible ── */}
+      <Card title="Workout History" className="mb-8 mt-8">
+        <GymHeatmap userId={user!.id} />
+      </Card>
+
       {/* ── Progress Section ── */}
       {gymLogs.length > 0 && allHistory.length > 0 && (
         <>
-          <Card title="Workout History" className="mb-8 mt-8">
-            <GymHeatmap userId={user!.id} />
-          </Card>
-
           <div className="mt-4">
           <div className="flex items-center gap-3 mb-1">
             <TrendingUp size={22} />
