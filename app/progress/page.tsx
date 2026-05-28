@@ -397,6 +397,7 @@ export default function ProgressPage() {
   }
 
   const bmr = dailyEntry?.bmr || 0;
+  const effectiveBMR = Math.round(bmr * calcSettings.bmrMultiplier);
   const caloriesIn = dailyEntry?.total_calories_in || 0;
   const caloriesOut = dailyEntry?.total_calories_out || 0;
   const netIntake = dailyEntry?.net_intake || 0;
@@ -534,16 +535,22 @@ export default function ProgressPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <Card>
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-pixel-sm text-darkgray/70">Resting BMR</p>
+                <p className="text-pixel-sm text-darkgray/70">
+                  {calcSettings.bmrMultiplier > 1.0 ? 'Effective BMR' : 'Resting BMR'}
+                </p>
                 <span
                   className="inline-flex items-center justify-center cursor-help"
-                  title="BMR is the calories your body burns at rest. We estimate it using the Mifflin-St Jeor formula."
+                  title={calcSettings.bmrMultiplier > 1.0
+                    ? `Resting BMR (${bmr} cal) × ${calcSettings.bmrMultiplier.toFixed(2)} activity multiplier = ${effectiveBMR} cal effective`
+                    : 'BMR is the calories your body burns at rest. We estimate it using the Mifflin-St Jeor formula.'}
                 >
                   <Info size={14} className="text-darkgray/70" />
                 </span>
               </div>
-              <p className="font-mono text-2xl">{bmr}</p>
-              <p className="font-mono text-xs text-darkgray/50">cal/day</p>
+              <p className="font-mono text-2xl">{calcSettings.bmrMultiplier > 1.0 ? effectiveBMR : bmr}</p>
+              <p className="font-mono text-xs text-darkgray/50">
+                {calcSettings.bmrMultiplier > 1.0 ? `${bmr} × ${calcSettings.bmrMultiplier.toFixed(2)}` : 'cal/day'}
+              </p>
             </Card>
             <Card>
               <p className="text-pixel-sm text-darkgray/70 mb-1">Calories In</p>
@@ -786,17 +793,23 @@ export default function ProgressPage() {
 
       {/* How It's Calculated */}
       {dailyEntry && dailyEntry.apparent_deficit !== null && dailyEntry.apparent_deficit !== undefined && (
-        <Card title="How It's Calculated (Resting BMR)" className="mb-6">
+        <Card title={`How It's Calculated (${calcSettings.bmrMultiplier > 1.0 ? 'Effective BMR' : 'Resting BMR'})`} className="mb-6">
           <div className="font-mono text-sm space-y-2">
             <p>
               BMR (Mifflin-St Jeor): (10 × {selectedWeight}kg) + (6.25 × {user?.height_cm}cm) - (5 × {user?.age}) {user?.gender === 'male' ? '+ 5' : '- 161'} ={' '}
               <strong>{bmr} cal</strong>
             </p>
+            {calcSettings.bmrMultiplier > 1.0 && (
+              <p>
+                Activity multiplier: {bmr} (resting BMR) × <strong>{calcSettings.bmrMultiplier.toFixed(2)}</strong> ({bmrActivityLabel(calcSettings.bmrMultiplier)}) ={' '}
+                <strong style={{ color: '#2d7a2d' }}>{effectiveBMR} cal effective</strong>
+              </p>
+            )}
             <p>
-              Net Intake: {caloriesIn} (food) - {caloriesOut} (gym) = <strong>{netIntake} cal</strong>
+              Net Intake: {caloriesIn} (food){calcSettings.includeGym && caloriesOut > 0 ? ` - ${caloriesOut} (gym)` : ''} = <strong>{netIntake} cal</strong>
             </p>
             <p>
-              Apparent {getBalanceLabel()}: {bmr} (BMR) - {netIntake} (net) ={' '}
+              Apparent {getBalanceLabel()}: {effectiveBMR} ({calcSettings.bmrMultiplier > 1.0 ? 'effective BMR' : 'BMR'}) - {netIntake} (net) ={' '}
               <strong style={{ color: apparentDeficit >= 0 ? '#2d7a2d' : '#c92a2a' }}>{apparentDeficit} cal</strong>
             </p>
             <p className="text-darkgray/70 text-xs mt-2">
