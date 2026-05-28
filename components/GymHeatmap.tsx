@@ -226,17 +226,17 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
       {/* Stats modal */}
       {showStats && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowStats(false)} />
-          <div className="relative bg-white border-2 border-darkgray w-full max-w-3xl" style={{ maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b-2 border-darkgray shrink-0">
-              <h3 className="font-mono font-bold text-base">Workout Stats</h3>
-              <button onClick={() => setShowStats(false)} className="p-1 hover:bg-lavender transition-all">
-                <X size={16} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowStats(false)} />
+          <div className="relative bg-white border-4 border-darkgray w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-pixel">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
+              <h2 className="heading-pixel text-xl">Workout Stats</h2>
+              <button onClick={() => setShowStats(false)} className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all">
+                <X size={20} />
               </button>
             </div>
 
-            <div className="overflow-y-auto px-6 py-5 space-y-7">
+            <div className="p-6 space-y-7">
               {/* Muscle groups — 2 columns */}
               <div>
                 <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-4">Muscle Groups</p>
@@ -247,7 +247,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
                     {stats.sortedMuscles.map(([muscle, count]) => (
                       <div key={muscle} className="flex items-center gap-2">
                         <span className="font-mono text-xs w-28 shrink-0 capitalize">{muscle}</span>
-                        <div className="flex-1 h-3 bg-darkgray/10 rounded-sm overflow-hidden">
+                        <div className="flex-1 h-3 bg-darkgray/10 overflow-hidden">
                           <div style={{ width: `${(count / stats.maxMuscle) * 100}%`, backgroundColor: accentMid, height: '100%' }} />
                         </div>
                         <span className="font-mono text-xs text-darkgray/60 w-8 text-right shrink-0">{count}×</span>
@@ -268,7 +268,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
                       <p className="font-mono text-xs text-darkgray/50 mb-2">Most frequent</p>
                       <div className="space-y-1.5">
                         {stats.sortedExercises.slice(0, 5).map(([ex, count]) => (
-                          <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-2">
+                          <div key={ex} className="flex items-center justify-between border-2 border-darkgray/20 px-3 py-2">
                             <span className="font-mono text-xs">{ex}</span>
                             <span className="font-mono text-xs font-bold" style={{ color: accentDark }}>{count}×</span>
                           </div>
@@ -280,7 +280,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
                         <p className="font-mono text-xs text-darkgray/50 mb-2">Least frequent</p>
                         <div className="space-y-1.5">
                           {[...stats.sortedExercises].slice(-5).reverse().map(([ex, count]) => (
-                            <div key={ex} className="flex items-center justify-between border border-darkgray/10 px-3 py-2">
+                            <div key={ex} className="flex items-center justify-between border-2 border-darkgray/20 px-3 py-2">
                               <span className="font-mono text-xs">{ex}</span>
                               <span className="font-mono text-xs text-darkgray/50">{count}×</span>
                             </div>
