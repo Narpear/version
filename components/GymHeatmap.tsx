@@ -1,13 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react'; // useMemo kept for weeks/monthLabels
 import { supabase } from '@/lib/supabase';
-import { BarChart2, X } from 'lucide-react';
-
 type DayWorkout = {
   count: number;
   calories: number;
-  exercises: string[];
   muscleGroups: string[];
 };
 type Gender = 'male' | 'female' | 'non-binary';
@@ -30,7 +27,6 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
   const [workouts, setWorkouts] = useState<Map<string, DayWorkout>>(new Map());
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState<{ lines: string[]; x: number; y: number } | null>(null);
-  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -40,19 +36,16 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
 
       const { data } = await supabase
         .from('gym_logs')
-        .select('date, calories_burned, exercise_name, muscle_groups')
+        .select('date, calories_burned, muscle_groups')
         .eq('user_id', userId)
         .gte('date', oneYearAgo.toISOString().split('T')[0])
         .lte('date', today);
 
       const map = new Map<string, DayWorkout>();
       for (const row of data || []) {
-        const e = map.get(row.date) ?? { count: 0, calories: 0, exercises: [], muscleGroups: [] };
+        const e = map.get(row.date) ?? { count: 0, calories: 0, muscleGroups: [] };
         e.count++;
         e.calories += row.calories_burned ?? 0;
-        if (row.exercise_name && !e.exercises.includes(row.exercise_name)) {
-          e.exercises.push(row.exercise_name);
-        }
         for (const mg of (row.muscle_groups ?? [])) {
           if (!e.muscleGroups.includes(mg)) e.muscleGroups.push(mg);
         }
@@ -93,49 +86,18 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
     return { weeks, monthLabels };
   }, []);
 
-  const stats = useMemo(() => {
-    const exerciseCounts = new Map<string, number>();
-    const muscleCounts = new Map<string, number>();
-
-    for (const wd of workouts.values()) {
-      for (const ex of wd.exercises) {
-        exerciseCounts.set(ex, (exerciseCounts.get(ex) ?? 0) + 1);
-      }
-      for (const mg of wd.muscleGroups) {
-        muscleCounts.set(mg, (muscleCounts.get(mg) ?? 0) + 1);
-      }
-    }
-
-    const sortedExercises = [...exerciseCounts.entries()].sort((a, b) => b[1] - a[1]);
-    const sortedMuscles   = [...muscleCounts.entries()].sort((a, b) => b[1] - a[1]);
-    const maxMuscle = sortedMuscles[0]?.[1] ?? 1;
-
-    return { sortedExercises, sortedMuscles, maxMuscle };
-  }, [workouts]);
-
   if (loading) return <p className="font-mono text-xs text-darkgray/50">Loading workout history...</p>;
 
   const totalDays = workouts.size;
   const totalCals = [...workouts.values()].reduce((s, d) => s + d.calories, 0);
-  const accentDark = gender === 'female' ? '#5E1A8F' : '#1A3A8F';
-  const accentMid  = gender === 'female' ? '#9444C8' : '#3366CC';
 
   return (
     <div className="relative w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="font-mono text-sm text-darkgray/70">
-          <strong>{totalDays}</strong> workout days &nbsp;·&nbsp;
-          <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
-        </p>
-        <button
-          onClick={() => setShowStats(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 border-2 border-darkgray bg-white hover:bg-lavender font-mono text-xs transition-all"
-        >
-          <BarChart2 size={13} />
-          Stats
-        </button>
-      </div>
+      <p className="font-mono text-sm text-darkgray/70 mb-4">
+        <strong>{totalDays}</strong> workout days &nbsp;·&nbsp;
+        <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
+      </p>
 
       <div className="flex gap-2 items-start w-full">
         {/* Row labels */}
@@ -149,7 +111,6 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
 
         {/* Grid */}
         <div className="flex-1 min-w-0">
-          {/* Month labels */}
           <div style={{ display: 'flex', gap: 3, height: 24, marginBottom: 2 }}>
             {weeks.map((_, wi) => {
               const ml = monthLabels.find(m => m.col === wi);
@@ -160,8 +121,6 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
               );
             })}
           </div>
-
-          {/* Cells */}
           <div style={{ display: 'flex', gap: 3 }}>
             {weeks.map((week, wi) => (
               <div key={wi} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -201,11 +160,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
         <div className="flex flex-col items-center shrink-0" style={{ gap: 3, paddingTop: 26 }}>
           <span style={{ fontSize: 10 }} className="text-darkgray/50 font-mono mb-1">More</span>
           {[...LEGEND_CALS].reverse().map((cal, i) => (
-            <div
-              key={i}
-              style={{ width: 14, height: 14, backgroundColor: cellColor(cal, gender), borderRadius: 3 }}
-              className="border border-darkgray/10"
-            />
+            <div key={i} style={{ width: 14, height: 14, backgroundColor: cellColor(cal, gender), borderRadius: 3 }} className="border border-darkgray/10" />
           ))}
           <span style={{ fontSize: 10 }} className="text-darkgray/50 font-mono mt-1">Less</span>
         </div>
@@ -220,79 +175,6 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
           {tooltip.lines.map((t, i) => (
             <p key={i} className={i === 0 ? 'font-bold' : 'text-white/80'} style={{ marginTop: i > 0 ? 2 : 0 }}>{t}</p>
           ))}
-        </div>
-      )}
-
-      {/* Stats modal */}
-      {showStats && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowStats(false)} />
-          <div className="relative bg-white border-4 border-darkgray w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-pixel">
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b-4 border-darkgray p-4 flex justify-between items-center">
-              <h2 className="heading-pixel text-xl">Workout Stats</h2>
-              <button onClick={() => setShowStats(false)} className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-7">
-              {/* Muscle groups — 2 columns */}
-              <div>
-                <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-4">Muscle Groups</p>
-                {stats.sortedMuscles.length === 0 ? (
-                  <p className="font-mono text-xs text-darkgray/40">No data yet</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
-                    {stats.sortedMuscles.map(([muscle, count]) => (
-                      <div key={muscle} className="flex items-center gap-2">
-                        <span className="font-mono text-xs w-28 shrink-0 capitalize">{muscle}</span>
-                        <div className="flex-1 h-3 bg-darkgray/10 overflow-hidden">
-                          <div style={{ width: `${(count / stats.maxMuscle) * 100}%`, backgroundColor: accentMid, height: '100%' }} />
-                        </div>
-                        <span className="font-mono text-xs text-darkgray/60 w-8 text-right shrink-0">{count}×</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Exercises — 2 columns (most / least) */}
-              <div>
-                <p className="font-mono text-xs font-bold text-darkgray/50 uppercase mb-4">Exercises</p>
-                {stats.sortedExercises.length === 0 ? (
-                  <p className="font-mono text-xs text-darkgray/40">No data yet</p>
-                ) : (
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <p className="font-mono text-xs text-darkgray/50 mb-2">Most frequent</p>
-                      <div className="space-y-1.5">
-                        {stats.sortedExercises.slice(0, 5).map(([ex, count]) => (
-                          <div key={ex} className="flex items-center justify-between border-2 border-darkgray/20 px-3 py-2">
-                            <span className="font-mono text-xs">{ex}</span>
-                            <span className="font-mono text-xs font-bold" style={{ color: accentDark }}>{count}×</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {stats.sortedExercises.length > 5 && (
-                      <div>
-                        <p className="font-mono text-xs text-darkgray/50 mb-2">Least frequent</p>
-                        <div className="space-y-1.5">
-                          {[...stats.sortedExercises].slice(-5).reverse().map(([ex, count]) => (
-                            <div key={ex} className="flex items-center justify-between border-2 border-darkgray/20 px-3 py-2">
-                              <span className="font-mono text-xs">{ex}</span>
-                              <span className="font-mono text-xs text-darkgray/50">{count}×</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
