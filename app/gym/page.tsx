@@ -1080,7 +1080,7 @@ export default function GymPage() {
       {gymLogs.length > 0 && allHistory.length > 0 && (
         <>
           <Card title="Workout History" className="mb-8 mt-8">
-            <GymHeatmap userId={user.id} />
+            <GymHeatmap userId={user!.id} />
           </Card>
 
           <div className="mt-4">
