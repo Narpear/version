@@ -629,6 +629,15 @@ body::before {
   .pwa-top-nav { display: none !important; }
 }
 
+/* ── Hide scrollbar utility ── */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Micro-animations ── */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(16px); }

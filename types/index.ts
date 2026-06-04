@@ -95,7 +95,6 @@ export interface SkincareLog {
   date: string;
   time_of_day: 'pre_gym' | 'post_shower' | 'bedtime';
   cleansing_done: boolean;
-  serum_done: boolean;
   moisturizer_done: boolean;
 }
 

@@ -23,6 +23,10 @@ function cellColor(calories: number, gender: Gender): string {
 const LEGEND_CALS = [0, 60, 200, 380, 540];
 const ROW_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
 
+function toLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export default function GymHeatmap({ userId, gender = 'male' }: { userId: string; gender?: Gender }) {
   const [workouts, setWorkouts] = useState<Map<string, DayWorkout>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -30,7 +34,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
 
   useEffect(() => {
     (async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalDate(new Date());
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
@@ -38,7 +42,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
         .from('gym_logs')
         .select('date, calories_burned, muscle_groups')
         .eq('user_id', userId)
-        .gte('date', oneYearAgo.toISOString().split('T')[0])
+        .gte('date', toLocalDate(oneYearAgo))
         .lte('date', today);
 
       const map = new Map<string, DayWorkout>();
@@ -99,7 +103,7 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
         <strong>{totalCals.toLocaleString()}</strong> cal burned in the last year
       </p>
 
-      <div className="flex gap-2 items-start w-full">
+      <div className="flex gap-2 items-start overflow-x-auto scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Row labels */}
         <div className="flex flex-col shrink-0" style={{ paddingTop: 26, gap: 3 }}>
           {ROW_LABELS.map((lbl, i) => (
@@ -110,12 +114,12 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
         </div>
 
         {/* Grid */}
-        <div className="flex-1 min-w-0">
+        <div className="shrink-0">
           <div style={{ display: 'flex', gap: 3, height: 24, marginBottom: 2 }}>
             {weeks.map((_, wi) => {
               const ml = monthLabels.find(m => m.col === wi);
               return (
-                <div key={wi} style={{ flex: 1, fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'visible' }}>
+                <div key={wi} style={{ width: 14, fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap', overflow: 'visible' }}>
                   {ml?.label ?? ''}
                 </div>
               );
@@ -123,16 +127,16 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
           </div>
           <div style={{ display: 'flex', gap: 3 }}>
             {weeks.map((week, wi) => (
-              <div key={wi} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <div key={wi} style={{ width: 14, display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {week.map((day, di) => {
-                  if (!day) return <div key={di} style={{ paddingBottom: '100%' }} />;
-                  const ds = day.toISOString().split('T')[0];
+                  if (!day) return <div key={di} style={{ width: 14, height: 14 }} />;
+                  const ds = toLocalDate(day);
                   const wd = workouts.get(ds);
                   const cal = wd?.calories ?? 0;
                   return (
                     <div
                       key={di}
-                      style={{ paddingBottom: '100%', position: 'relative', backgroundColor: cellColor(cal, gender), borderRadius: 3, cursor: 'default' }}
+                      style={{ width: 14, height: 14, backgroundColor: cellColor(cal, gender), borderRadius: 3, cursor: 'default' }}
                       className="border border-darkgray/10 hover:scale-125 transition-transform"
                       onMouseEnter={e => {
                         const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
@@ -169,11 +173,11 @@ export default function GymHeatmap({ userId, gender = 'male' }: { userId: string
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 pointer-events-none bg-darkgray px-3 py-2 font-mono text-white"
+          className="fixed z-50 pointer-events-none bg-[#FFFFB5] border-2 border-darkgray px-3 py-2 font-mono text-darkgray"
           style={{ left: tooltip.x, top: tooltip.y - 70, transform: 'translateX(-50%)', fontSize: 11, maxWidth: 240, borderRadius: 4 }}
         >
           {tooltip.lines.map((t, i) => (
-            <p key={i} className={i === 0 ? 'font-bold' : 'text-white/80'} style={{ marginTop: i > 0 ? 2 : 0 }}>{t}</p>
+            <p key={i} className={i === 0 ? 'font-bold' : 'text-darkgray/70'} style={{ marginTop: i > 0 ? 2 : 0 }}>{t}</p>
           ))}
         </div>
       )}

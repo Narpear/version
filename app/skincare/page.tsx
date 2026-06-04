@@ -39,25 +39,23 @@ export default function SkincarePage() {
         { id: 'moisturizer_done', label: 'Moisturizer' },
       ]
     },
-    { 
-      id: 'post_shower', 
-      label: 'Post Shower', 
+    {
+      id: 'post_shower',
+      label: 'Post Shower',
       icon: Sun,
       color: '#B5DEFF',
       steps: [
         { id: 'cleansing_done', label: 'Cleansing' },
-        { id: 'serum_done', label: 'Serum' },
         { id: 'moisturizer_done', label: 'Moisturizer' },
       ]
     },
-    { 
-      id: 'bedtime', 
-      label: 'Bedtime', 
+    {
+      id: 'bedtime',
+      label: 'Bedtime',
       icon: Moon,
       color: '#FFB5E8',
       steps: [
         { id: 'cleansing_done', label: 'Cleansing' },
-        { id: 'serum_done', label: 'Serum' },
         { id: 'moisturizer_done', label: 'Moisturizer' },
       ]
     },
@@ -124,7 +122,7 @@ export default function SkincarePage() {
 
       const { data: weekData } = await supabase
         .from('skincare_logs')
-        .select('date, time_of_day, cleansing_done, serum_done, moisturizer_done')
+        .select('date, time_of_day, cleansing_done, moisturizer_done')
         .eq('user_id', userId)
         .gte('date', startDate)
         .lte('date', today)
@@ -193,7 +191,6 @@ export default function SkincarePage() {
           date: selectedDate,
           time_of_day: timeOfDay,
           cleansing_done: stepKey === 'cleansing_done',
-          serum_done: stepKey === 'serum_done',
           moisturizer_done: stepKey === 'moisturizer_done',
         };
 
