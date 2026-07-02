@@ -979,9 +979,8 @@ export default function FoodPage() {
               type="number"
               label="Protein (g per serving)"
               value={protein}
-              onChange={(e) => setProtein(parseFloat(e.target.value))}
+              onChange={(e) => setProtein(Math.round(parseFloat(e.target.value) * 10) / 10)}
               placeholder="20"
-              step={0.1}
               min={0}
             />
 
@@ -989,9 +988,8 @@ export default function FoodPage() {
               type="number"
               label="Carbs (g per serving)"
               value={carbs}
-              onChange={(e) => setCarbs(parseFloat(e.target.value))}
+              onChange={(e) => setCarbs(Math.round(parseFloat(e.target.value) * 10) / 10)}
               placeholder="50"
-              step={0.1}
               min={0}
             />
 
@@ -999,9 +997,8 @@ export default function FoodPage() {
               type="number"
               label="Fats (g per serving)"
               value={fats}
-              onChange={(e) => setFats(parseFloat(e.target.value))}
+              onChange={(e) => setFats(Math.round(parseFloat(e.target.value) * 10) / 10)}
               placeholder="10"
-              step={0.1}
               min={0}
             />
           </div>

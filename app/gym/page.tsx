@@ -11,7 +11,7 @@ import { User, GymLog, GymLogSet, ExerciseLibrary, WorkoutTemplate } from '@/typ
 import {
   Dumbbell, Trash2, ChevronLeft, ChevronRight, X,
   Search, Edit, Flame, Zap, Plus, BookOpen, ChevronDown, TrendingUp,
-  Bookmark, LayoutGrid
+  Bookmark
 } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
@@ -391,60 +391,6 @@ function ExerciseProgressCard({ name, history }: { name: string; history: Histor
   );
 }
 
-function TemplateCard({ template, onUse, onDelete, loadingTemplate, showDelete }: {
-  template: WorkoutTemplate;
-  onUse: (t: WorkoutTemplate) => void;
-  onDelete: (id: string) => void;
-  loadingTemplate: boolean;
-  showDelete: boolean;
-}) {
-  const exercises = template.exercises || [];
-  const totalCals = exercises.reduce((s, e) => s + (e.calories_burned || 0), 0);
-  const totalSets = exercises.reduce((s, e) => s + ((e.sets || []).length), 0);
-  return (
-    <div className="border-2 border-darkgray p-4 bg-white">
-      <div className="flex justify-between items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-mono font-bold">{template.template_name}</p>
-          <p className="font-mono text-xs text-darkgray/50 mt-0.5">
-            {exercises.length} exercise{exercises.length !== 1 ? 's' : ''}
-            {' · '}{totalSets} set{totalSets !== 1 ? 's' : ''}
-            {totalCals > 0 ? ` · ${totalCals} cal` : ''}
-          </p>
-          <div className="mt-2 space-y-1">
-            {exercises.map((ex, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="font-mono text-xs text-darkgray/60">{ex.exercise_name}</span>
-                {ex.is_cardio ? (
-                  <span className="font-mono text-xs text-pink-500">cardio</span>
-                ) : (
-                  <span className="font-mono text-xs text-darkgray/40">
-                    {(ex.sets || []).length} sets
-                    {(ex.muscle_groups || []).length > 0 ? ` · ${(ex.muscle_groups || []).slice(0, 2).join(', ')}` : ''}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 shrink-0">
-          <Button onClick={() => onUse(template)} disabled={loadingTemplate} className="text-xs whitespace-nowrap">
-            {loadingTemplate ? '...' : 'Use'}
-          </Button>
-          {showDelete && (
-            <button
-              onClick={() => onDelete(template.id)}
-              className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all flex items-center justify-center"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function GymPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -490,12 +436,12 @@ export default function GymPage() {
 
   // Workout templates
   const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutTemplate[]>([]);
-  const [publicWorkoutTemplates, setPublicWorkoutTemplates] = useState<WorkoutTemplate[]>([]);
-  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
-  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [showSaveWorkoutModal, setShowSaveWorkoutModal] = useState(false);
+  const [workoutName, setWorkoutName] = useState('');
+  const [savingWorkout, setSavingWorkout] = useState(false);
+
+  // Library tabs
+  const [libraryTab, setLibraryTab] = useState<'library' | 'myworkouts'>('library');
 
   // Tonnage
   const [weeklyTonnage, setWeeklyTonnage] = useState(0);
@@ -878,147 +824,75 @@ export default function GymPage() {
 
   const loadWorkoutTemplates = async (userId: string) => {
     try {
-      const { data: userTemplates } = await supabase
+      const { data } = await supabase
         .from('workout_templates')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-      if (userTemplates) setWorkoutTemplates(userTemplates);
+      if (data) setWorkoutTemplates(data);
     } catch (e) {
       console.log('Error loading workout templates');
     }
-    try {
-      const { data: publicTemplates } = await supabase
-        .from('public_workout_templates')
-        .select('*')
-        .order('template_name');
-      if (publicTemplates) setPublicWorkoutTemplates(publicTemplates);
-    } catch (e) {
-      console.log('No public workout templates table');
-    }
   };
 
-  const handleSaveAsTemplate = async () => {
-    if (!user || !templateName.trim() || gymLogs.length === 0) return;
-    setSavingTemplate(true);
+  const handleSaveAsWorkout = async () => {
+    if (!user || !workoutName.trim() || !exerciseName) return;
+    setSavingWorkout(true);
     try {
-      const exercises = gymLogs.map(log => ({
-        exercise_name: log.exercise_name,
-        muscle_groups: log.muscle_groups || [],
-        is_cardio: log.is_cardio || false,
-        sets: log.gym_log_sets && log.gym_log_sets.length > 0
-          ? [...log.gym_log_sets]
-              .sort((a, b) => a.set_number - b.set_number)
-              .map(s => ({ weight_kg: s.weight_kg || 0, reps: s.reps || 0, notes: s.notes || '' }))
-          : Array.from({ length: log.sets || 1 }, () => ({
-              weight_kg: log.weight_kg || 0,
-              reps: log.reps || 0,
-              notes: '',
-            })),
-        calories_burned: log.calories_burned || 0,
-        notes: log.notes || null,
-      }));
-
       const { data, error } = await supabase
         .from('workout_templates')
-        .insert({ user_id: user.id, template_name: templateName.trim(), exercises })
+        .insert({
+          user_id: user.id,
+          template_name: workoutName.trim(),
+          exercises: [{
+            exercise_name: exerciseName,
+            muscle_groups: isCardio ? [] : muscleGroups,
+            is_cardio: isCardio,
+            sets: exerciseSets,
+            calories_burned: caloriesBurned,
+            notes: notes || null,
+          }],
+        })
         .select()
         .single();
-
       if (error) throw error;
       setWorkoutTemplates(prev => [data, ...prev]);
-      setShowSaveTemplateModal(false);
-      setTemplateName('');
-      toast('Workout template saved!');
+      setShowSaveWorkoutModal(false);
+      setWorkoutName('');
+      toast('Saved to My Workouts!');
     } catch (e) {
       console.error(e);
-      toast('Failed to save template');
+      toast('Failed to save workout');
     } finally {
-      setSavingTemplate(false);
+      setSavingWorkout(false);
     }
   };
 
-  const handleUseTemplate = async (template: WorkoutTemplate) => {
-    if (!user || loadingTemplate) return;
-    setLoadingTemplate(true);
-    try {
-      const newLogs: GymLog[] = [];
-      for (const exercise of template.exercises) {
-        const validSets = exercise.sets.filter(s => s.reps > 0 || s.weight_kg > 0);
-        const setsCount = validSets.length || null;
-        const firstReps = validSets[0]?.reps || null;
-        const maxWeight = validSets.length > 0 ? Math.max(...validSets.map(s => s.weight_kg || 0)) : 0;
-        const weightForLog = maxWeight > 0 ? maxWeight : null;
-
-        const { data, error } = await supabase
-          .from('gym_logs')
-          .insert({
-            user_id: user.id,
-            date: selectedDate,
-            exercise_name: exercise.exercise_name,
-            muscle_groups: exercise.is_cardio ? [] : exercise.muscle_groups,
-            is_cardio: exercise.is_cardio,
-            sets: setsCount,
-            reps: firstReps,
-            weight_kg: weightForLog,
-            calories_burned: exercise.calories_burned,
-            notes: exercise.notes,
-            warmup_done: false,
-            cooldown_done: false,
-            meditation_done: false,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        try {
-          if (exercise.sets.length > 0) {
-            await supabase.from('gym_log_sets').insert(
-              exercise.sets.map((s, i) => ({
-                gym_log_id: data.id,
-                set_number: i + 1,
-                weight_kg: s.weight_kg || null,
-                reps: s.reps || null,
-                notes: s.notes || null,
-              }))
-            );
-          }
-        } catch { /* migration not run yet */ }
-
-        newLogs.push({
-          ...data,
-          gym_log_sets: exercise.sets.map((s, i) => ({
-            id: '',
-            gym_log_id: data.id,
-            set_number: i + 1,
-            weight_kg: s.weight_kg || null,
-            reps: s.reps || null,
-            notes: s.notes || null,
-          })),
-        });
-      }
-
-      const updated = [...gymLogs, ...newLogs];
-      setGymLogs(updated);
-      await updateDailyTotals(user.id, updated, selectedDate);
-      setShowTemplatesModal(false);
-      toast(`Loaded "${template.template_name}"!`);
-    } catch (e) {
-      console.error(e);
-      toast('Failed to load template');
-    } finally {
-      setLoadingTemplate(false);
-    }
+  const handleSelectFromWorkoutTemplate = (template: WorkoutTemplate) => {
+    const ex = (template.exercises || [])[0];
+    if (!ex) return;
+    setExerciseName(ex.exercise_name);
+    setMuscleGroups(ex.muscle_groups || []);
+    setIsCardio(ex.is_cardio || false);
+    setExerciseSets(
+      ex.sets && ex.sets.length > 0
+        ? ex.sets.map(s => ({ weight_kg: s.weight_kg || 0, reps: s.reps || 0, notes: s.notes || '' }))
+        : [{ weight_kg: 0, reps: 0, notes: '' }]
+    );
+    setCaloriesBurned(ex.calories_burned || 0);
+    setNotes(ex.notes || '');
+    setMuscleInput('');
+    setShowLibraryModal(false);
+    setShowAddModal(true);
   };
 
-  const handleDeleteTemplate = async (id: string) => {
+  const handleDeleteWorkout = async (id: string) => {
     try {
       await supabase.from('workout_templates').delete().eq('id', id);
       setWorkoutTemplates(prev => prev.filter(t => t.id !== id));
-      toast('Template deleted');
+      toast('Deleted');
     } catch (e) {
-      toast('Failed to delete template');
+      toast('Failed to delete');
     }
   };
 
@@ -1183,20 +1057,10 @@ export default function GymPage() {
           <Plus size={16} className="inline mr-2" />
           Log Exercise
         </Button>
-        <Button variant="secondary" onClick={() => setShowLibraryModal(true)}>
+        <Button variant="secondary" onClick={() => { setLibraryTab('library'); setShowLibraryModal(true); }}>
           <BookOpen size={16} className="inline mr-2" />
           Exercise Library
         </Button>
-        <Button variant="secondary" onClick={() => setShowTemplatesModal(true)}>
-          <LayoutGrid size={16} className="inline mr-2" />
-          My Workouts
-        </Button>
-        {gymLogs.length > 0 && (
-          <Button variant="secondary" onClick={() => { setTemplateName(''); setShowSaveTemplateModal(true); }}>
-            <Bookmark size={16} className="inline mr-2" />
-            Save as Template
-          </Button>
-        )}
       </div>
 
       {/* ── Summary Cards ── */}
@@ -1446,7 +1310,6 @@ export default function GymPage() {
                       type="number"
                       value={set.weight_kg || ''}
                       min={0}
-                      step={0.5}
                       placeholder="kg"
                       className="input-pixel w-20 text-sm"
                       onChange={e => {
@@ -1520,107 +1383,48 @@ export default function GymPage() {
             </div>
           </div>
 
-          <div className="mt-6">
-            <Button type="submit" className="w-full">
+          <div className="mt-6 flex gap-3">
+            <Button type="submit" className="flex-1">
               {editingWorkout ? 'Update Exercise' : 'Log Exercise'}
             </Button>
+            {!editingWorkout && exerciseName && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => { setWorkoutName(exerciseName); setShowSaveWorkoutModal(true); }}
+              >
+                <Bookmark size={16} />
+              </Button>
+            )}
           </div>
         </form>
       </Modal>
 
-      {/* ── Save as Template Modal ── */}
+      {/* ── Save as Workout Modal ── */}
       <Modal
-        isOpen={showSaveTemplateModal}
-        onClose={() => { setShowSaveTemplateModal(false); setTemplateName(''); }}
-        title="Save as Workout Template"
+        isOpen={showSaveWorkoutModal}
+        onClose={() => { setShowSaveWorkoutModal(false); setWorkoutName(''); }}
+        title="Save as Workout"
       >
         <p className="font-mono text-sm text-darkgray/60 mb-5">
-          Saves all {gymLogs.length} exercise{gymLogs.length !== 1 ? 's' : ''} from{' '}
-          {isToday ? 'today' : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
-          as a reusable workout template.
+          Save <span className="font-bold text-darkgray">{exerciseName}</span> with its current sets and weights to My Workouts for quick re-use.
         </p>
-        <div className="mb-2 space-y-1">
-          {gymLogs.map((log, i) => (
-            <div key={i} className="flex items-center gap-2 font-mono text-xs text-darkgray/60">
-              <span className="text-darkgray/30">·</span>
-              <span>{log.exercise_name}</span>
-              {log.gym_log_sets && log.gym_log_sets.length > 0 && (
-                <span className="text-darkgray/40">{log.gym_log_sets.length} set{log.gym_log_sets.length !== 1 ? 's' : ''}</span>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="mt-5">
-          <Input
-            label="Template Name"
-            type="text"
-            value={templateName}
-            onChange={e => setTemplateName(e.target.value)}
-            placeholder="e.g., Push Day, Leg Day..."
-          />
-        </div>
+        <Input
+          label="Name"
+          type="text"
+          value={workoutName}
+          onChange={e => setWorkoutName(e.target.value)}
+          placeholder={exerciseName}
+        />
         <div className="mt-4">
           <Button
             className="w-full"
-            onClick={handleSaveAsTemplate}
-            disabled={!templateName.trim() || savingTemplate}
+            onClick={handleSaveAsWorkout}
+            disabled={!workoutName.trim() || savingWorkout}
           >
-            {savingTemplate ? 'Saving...' : 'Save Template'}
+            {savingWorkout ? 'Saving...' : 'Save to My Workouts'}
           </Button>
         </div>
-      </Modal>
-
-      {/* ── My Workout Templates Modal ── */}
-      <Modal
-        isOpen={showTemplatesModal}
-        onClose={() => setShowTemplatesModal(false)}
-        title="Workout Templates"
-      >
-        {workoutTemplates.length > 0 && (
-          <>
-            <p className="font-pixel text-xs text-darkgray/50 mb-3 uppercase tracking-wide">My Workouts</p>
-            <div className="space-y-3 mb-6">
-              {workoutTemplates.map(template => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  onUse={handleUseTemplate}
-                  onDelete={handleDeleteTemplate}
-                  loadingTemplate={loadingTemplate}
-                  showDelete
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {publicWorkoutTemplates.length > 0 && (
-          <>
-            <p className="font-pixel text-xs text-darkgray/50 mb-3 uppercase tracking-wide">Default Workouts</p>
-            <div className="space-y-3">
-              {publicWorkoutTemplates.map(template => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  onUse={handleUseTemplate}
-                  onDelete={handleDeleteTemplate}
-                  loadingTemplate={loadingTemplate}
-                  showDelete={false}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {workoutTemplates.length === 0 && publicWorkoutTemplates.length === 0 && (
-          <div className="text-center py-10">
-            <LayoutGrid size={40} className="mx-auto mb-3 text-darkgray/20" />
-            <p className="font-mono text-sm text-darkgray/60">No workout templates yet.</p>
-            <p className="font-mono text-xs text-darkgray/40 mt-1">
-              Log exercises and click &ldquo;Save as Template&rdquo; to create one.
-            </p>
-          </div>
-        )}
       </Modal>
 
       {/* ── Exercise Library Modal ── */}
@@ -1633,67 +1437,125 @@ export default function GymPage() {
         }}
         title="Exercise Library"
       >
-        {/* Search */}
-        <div className="relative mb-4">
-          <input
-            type="text"
-            value={librarySearch}
-            onChange={e => setLibrarySearch(e.target.value)}
-            placeholder="Search exercises..."
-            className="input-pixel w-full pr-10"
-          />
-          <Search
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-darkgray/50 pointer-events-none"
-            size={18}
-          />
+        {/* Tabs */}
+        <div className="flex gap-2 mb-5 border-b-2 border-darkgray">
+          <button
+            onClick={() => setLibraryTab('myworkouts')}
+            className={`px-4 py-2 font-mono transition-all ${libraryTab === 'myworkouts' ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' : 'bg-white hover:bg-accent/30'}`}
+          >
+            My Workouts {workoutTemplates.length > 0 ? `(${workoutTemplates.length})` : ''}
+          </button>
+          <button
+            onClick={() => setLibraryTab('library')}
+            className={`px-4 py-2 font-mono transition-all ${libraryTab === 'library' ? 'bg-accent border-2 border-darkgray border-b-0 -mb-0.5' : 'bg-white hover:bg-accent/30'}`}
+          >
+            Library
+          </button>
         </div>
 
-        {/* Muscle filter pills */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {libraryMuscleOptions.map(g => (
-            <button
-              key={g}
-              onClick={() => setSelectedMuscleFilter(g)}
-              className={`px-3 py-1 border-2 border-darkgray font-mono text-xs transition-all ${
-                selectedMuscleFilter === g ? 'bg-primary border-darkgray text-darkgray font-bold' : 'bg-white hover:bg-accent/30'
-              }`}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-
-        {/* List */}
-        <div className="space-y-2">
-          {filteredLibrary.length === 0 ? (
-            <p className="font-mono text-sm text-center py-6 text-darkgray/60">No exercises found</p>
-          ) : (
-            filteredLibrary.map(exercise => (
-              <button
-                key={exercise.id}
-                onClick={() => handleSelectFromLibrary(exercise)}
-                className="w-full text-left p-4 border-2 border-darkgray hover:bg-accent/20 transition-all"
-              >
-                <div className="flex justify-between items-start gap-3">
-                  <div className="min-w-0">
-                    <p className="font-mono font-bold text-sm">{exercise.exercise_name}</p>
-                    {lastWeightMap.has(exercise.exercise_name.trim().toLowerCase()) && (
+        {/* My Workouts tab */}
+        {libraryTab === 'myworkouts' && (
+          <div className="space-y-2">
+            {workoutTemplates.length === 0 ? (
+              <div className="text-center py-10">
+                <Bookmark size={36} className="mx-auto mb-3 text-darkgray/20" />
+                <p className="font-mono text-sm text-darkgray/60">No saved workouts yet.</p>
+                <p className="font-mono text-xs text-darkgray/40 mt-1">
+                  Fill in an exercise and tap <Bookmark size={11} className="inline" /> to save it here.
+                </p>
+              </div>
+            ) : (
+              workoutTemplates.map(template => {
+                const ex = (template.exercises || [])[0];
+                if (!ex) return null;
+                return (
+                  <div key={template.id} className="flex items-center gap-3 p-4 border-2 border-darkgray bg-white">
+                    <button
+                      className="flex-1 text-left hover:bg-accent/10 transition-all min-w-0"
+                      onClick={() => handleSelectFromWorkoutTemplate(template)}
+                    >
+                      <p className="font-mono font-bold text-sm">{template.template_name}</p>
                       <p className="font-mono text-xs text-darkgray/50 mt-0.5">
-                        Last: {lastWeightMap.get(exercise.exercise_name.trim().toLowerCase())} kg
+                        {(ex.sets || []).length} set{(ex.sets || []).length !== 1 ? 's' : ''}
+                        {(ex.sets || []).some(s => s.weight_kg) && ` · ${Math.max(...(ex.sets || []).map(s => s.weight_kg || 0))} kg`}
                       </p>
-                    )}
+                      <div className="mt-1">
+                        <MuscleTags groups={ex.muscle_groups || []} isCardio={ex.is_cardio || false} />
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteWorkout(template.id)}
+                      className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <div className="shrink-0">
-                    <MuscleTags
-                      groups={exercise.muscle_groups || []}
-                      isCardio={exercise.is_cardio}
-                    />
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Library tab */}
+        {libraryTab === 'library' && (
+          <>
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={librarySearch}
+                onChange={e => setLibrarySearch(e.target.value)}
+                placeholder="Search exercises..."
+                className="input-pixel w-full pr-10"
+              />
+              <Search
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-darkgray/50 pointer-events-none"
+                size={18}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              {libraryMuscleOptions.map(g => (
+                <button
+                  key={g}
+                  onClick={() => setSelectedMuscleFilter(g)}
+                  className={`px-3 py-1 border-2 border-darkgray font-mono text-xs transition-all ${
+                    selectedMuscleFilter === g ? 'bg-primary border-darkgray text-darkgray font-bold' : 'bg-white hover:bg-accent/30'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {filteredLibrary.length === 0 ? (
+                <p className="font-mono text-sm text-center py-6 text-darkgray/60">No exercises found</p>
+              ) : (
+                filteredLibrary.map(exercise => (
+                  <button
+                    key={exercise.id}
+                    onClick={() => handleSelectFromLibrary(exercise)}
+                    className="w-full text-left p-4 border-2 border-darkgray hover:bg-accent/20 transition-all"
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono font-bold text-sm">{exercise.exercise_name}</p>
+                        {lastWeightMap.has(exercise.exercise_name.trim().toLowerCase()) && (
+                          <p className="font-mono text-xs text-darkgray/50 mt-0.5">
+                            Last: {lastWeightMap.get(exercise.exercise_name.trim().toLowerCase())} kg
+                          </p>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <MuscleTags groups={exercise.muscle_groups || []} isCardio={exercise.is_cardio} />
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </Modal>
 
     </div>
