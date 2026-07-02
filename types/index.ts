@@ -110,16 +110,21 @@ export interface FoodTemplate {
   is_healthy: boolean;
 }
 
+export interface WorkoutTemplateExercise {
+  exercise_name: string;
+  muscle_groups: string[];
+  is_cardio: boolean;
+  sets: Array<{ weight_kg: number; reps: number; notes: string }>;
+  calories_burned: number;
+  notes: string | null;
+}
+
 export interface WorkoutTemplate {
   id: string;
   user_id: string;
   template_name: string;
-  exercise_name: string;
-  sets: number | null;
-  reps: number | null;
-  weight_kg: number | null;
-  calories_burned: number;
-  notes: string | null;
+  exercises: WorkoutTemplateExercise[];
+  created_at?: string;
 }
 
 export interface ExerciseLibrary {

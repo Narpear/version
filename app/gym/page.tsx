@@ -7,10 +7,11 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { firePRConfetti } from '@/lib/prConfetti';
-import { User, GymLog, GymLogSet, ExerciseLibrary } from '@/types';
+import { User, GymLog, GymLogSet, ExerciseLibrary, WorkoutTemplate } from '@/types';
 import {
   Dumbbell, Trash2, ChevronLeft, ChevronRight, X,
-  Search, Edit, Flame, Zap, Plus, BookOpen, ChevronDown, TrendingUp
+  Search, Edit, Flame, Zap, Plus, BookOpen, ChevronDown, TrendingUp,
+  Bookmark, LayoutGrid
 } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
@@ -433,6 +434,14 @@ export default function GymPage() {
   // Progress section
   const [progressSearch, setProgressSearch] = useState('');
 
+  // Workout templates
+  const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutTemplate[]>([]);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+
   // Tonnage
   const [weeklyTonnage, setWeeklyTonnage] = useState(0);
 
@@ -445,6 +454,7 @@ export default function GymPage() {
     loadExerciseLibrary();
     loadAllHistory(parsedUser.id);
     loadWeeklyTonnage(parsedUser.id, selectedDate);
+    loadWorkoutTemplates(parsedUser.id);
   }, [router, selectedDate]);
 
   useEffect(() => {
@@ -811,6 +821,143 @@ export default function GymPage() {
     }
   };
 
+  const loadWorkoutTemplates = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('workout_templates')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (data) setWorkoutTemplates(data);
+    } catch (e) {
+      console.log('Error loading workout templates');
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!user || !templateName.trim() || gymLogs.length === 0) return;
+    setSavingTemplate(true);
+    try {
+      const exercises = gymLogs.map(log => ({
+        exercise_name: log.exercise_name,
+        muscle_groups: log.muscle_groups || [],
+        is_cardio: log.is_cardio || false,
+        sets: log.gym_log_sets && log.gym_log_sets.length > 0
+          ? [...log.gym_log_sets]
+              .sort((a, b) => a.set_number - b.set_number)
+              .map(s => ({ weight_kg: s.weight_kg || 0, reps: s.reps || 0, notes: s.notes || '' }))
+          : Array.from({ length: log.sets || 1 }, () => ({
+              weight_kg: log.weight_kg || 0,
+              reps: log.reps || 0,
+              notes: '',
+            })),
+        calories_burned: log.calories_burned || 0,
+        notes: log.notes || null,
+      }));
+
+      const { data, error } = await supabase
+        .from('workout_templates')
+        .insert({ user_id: user.id, template_name: templateName.trim(), exercises })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setWorkoutTemplates(prev => [data, ...prev]);
+      setShowSaveTemplateModal(false);
+      setTemplateName('');
+      toast('Workout template saved!');
+    } catch (e) {
+      console.error(e);
+      toast('Failed to save template');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleUseTemplate = async (template: WorkoutTemplate) => {
+    if (!user || loadingTemplate) return;
+    setLoadingTemplate(true);
+    try {
+      const newLogs: GymLog[] = [];
+      for (const exercise of template.exercises) {
+        const validSets = exercise.sets.filter(s => s.reps > 0 || s.weight_kg > 0);
+        const setsCount = validSets.length || null;
+        const firstReps = validSets[0]?.reps || null;
+        const maxWeight = validSets.length > 0 ? Math.max(...validSets.map(s => s.weight_kg || 0)) : 0;
+        const weightForLog = maxWeight > 0 ? maxWeight : null;
+
+        const { data, error } = await supabase
+          .from('gym_logs')
+          .insert({
+            user_id: user.id,
+            date: selectedDate,
+            exercise_name: exercise.exercise_name,
+            muscle_groups: exercise.is_cardio ? [] : exercise.muscle_groups,
+            is_cardio: exercise.is_cardio,
+            sets: setsCount,
+            reps: firstReps,
+            weight_kg: weightForLog,
+            calories_burned: exercise.calories_burned,
+            notes: exercise.notes,
+            warmup_done: false,
+            cooldown_done: false,
+            meditation_done: false,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        try {
+          if (exercise.sets.length > 0) {
+            await supabase.from('gym_log_sets').insert(
+              exercise.sets.map((s, i) => ({
+                gym_log_id: data.id,
+                set_number: i + 1,
+                weight_kg: s.weight_kg || null,
+                reps: s.reps || null,
+                notes: s.notes || null,
+              }))
+            );
+          }
+        } catch { /* migration not run yet */ }
+
+        newLogs.push({
+          ...data,
+          gym_log_sets: exercise.sets.map((s, i) => ({
+            id: '',
+            gym_log_id: data.id,
+            set_number: i + 1,
+            weight_kg: s.weight_kg || null,
+            reps: s.reps || null,
+            notes: s.notes || null,
+          })),
+        });
+      }
+
+      const updated = [...gymLogs, ...newLogs];
+      setGymLogs(updated);
+      await updateDailyTotals(user.id, updated, selectedDate);
+      setShowTemplatesModal(false);
+      toast(`Loaded "${template.template_name}"!`);
+    } catch (e) {
+      console.error(e);
+      toast('Failed to load template');
+    } finally {
+      setLoadingTemplate(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    try {
+      await supabase.from('workout_templates').delete().eq('id', id);
+      setWorkoutTemplates(prev => prev.filter(t => t.id !== id));
+      toast('Template deleted');
+    } catch (e) {
+      toast('Failed to delete template');
+    }
+  };
+
   const changeDate = (days: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + days);
@@ -967,7 +1114,7 @@ export default function GymPage() {
       </div>
 
       {/* ── Action Buttons ── */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-6">
         <Button onClick={() => { resetForm(); setShowAddModal(true); }}>
           <Plus size={16} className="inline mr-2" />
           Log Exercise
@@ -976,6 +1123,16 @@ export default function GymPage() {
           <BookOpen size={16} className="inline mr-2" />
           Exercise Library
         </Button>
+        <Button variant="secondary" onClick={() => setShowTemplatesModal(true)}>
+          <LayoutGrid size={16} className="inline mr-2" />
+          My Workouts
+        </Button>
+        {gymLogs.length > 0 && (
+          <Button variant="secondary" onClick={() => { setTemplateName(''); setShowSaveTemplateModal(true); }}>
+            <Bookmark size={16} className="inline mr-2" />
+            Save as Template
+          </Button>
+        )}
       </div>
 
       {/* ── Summary Cards ── */}
@@ -1305,6 +1462,116 @@ export default function GymPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* ── Save as Template Modal ── */}
+      <Modal
+        isOpen={showSaveTemplateModal}
+        onClose={() => { setShowSaveTemplateModal(false); setTemplateName(''); }}
+        title="Save as Workout Template"
+      >
+        <p className="font-mono text-sm text-darkgray/60 mb-5">
+          Saves all {gymLogs.length} exercise{gymLogs.length !== 1 ? 's' : ''} from{' '}
+          {isToday ? 'today' : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
+          as a reusable workout template.
+        </p>
+        <div className="mb-2 space-y-1">
+          {gymLogs.map((log, i) => (
+            <div key={i} className="flex items-center gap-2 font-mono text-xs text-darkgray/60">
+              <span className="text-darkgray/30">·</span>
+              <span>{log.exercise_name}</span>
+              {log.gym_log_sets && log.gym_log_sets.length > 0 && (
+                <span className="text-darkgray/40">{log.gym_log_sets.length} set{log.gym_log_sets.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-5">
+          <Input
+            label="Template Name"
+            type="text"
+            value={templateName}
+            onChange={e => setTemplateName(e.target.value)}
+            placeholder="e.g., Push Day, Leg Day..."
+            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveAsTemplate(); } }}
+          />
+        </div>
+        <div className="mt-4">
+          <Button
+            className="w-full"
+            onClick={handleSaveAsTemplate}
+            disabled={!templateName.trim() || savingTemplate}
+          >
+            {savingTemplate ? 'Saving...' : 'Save Template'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ── My Workout Templates Modal ── */}
+      <Modal
+        isOpen={showTemplatesModal}
+        onClose={() => setShowTemplatesModal(false)}
+        title="My Workout Templates"
+      >
+        {workoutTemplates.length === 0 ? (
+          <div className="text-center py-10">
+            <LayoutGrid size={40} className="mx-auto mb-3 text-darkgray/20" />
+            <p className="font-mono text-sm text-darkgray/60">No workout templates yet.</p>
+            <p className="font-mono text-xs text-darkgray/40 mt-1">
+              Log exercises and click &ldquo;Save as Template&rdquo; to reuse your workouts.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {workoutTemplates.map(template => {
+              const totalCals = template.exercises.reduce((s, e) => s + (e.calories_burned || 0), 0);
+              const totalSets = template.exercises.reduce((s, e) => s + (e.sets?.length || 0), 0);
+              return (
+                <div key={template.id} className="border-2 border-darkgray p-4 bg-white">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono font-bold">{template.template_name}</p>
+                      <p className="font-mono text-xs text-darkgray/50 mt-0.5">
+                        {template.exercises.length} exercise{template.exercises.length !== 1 ? 's' : ''}
+                        {' · '}{totalSets} set{totalSets !== 1 ? 's' : ''}
+                        {totalCals > 0 ? ` · ${totalCals} cal` : ''}
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        {template.exercises.map((ex, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-darkgray/60">{ex.exercise_name}</span>
+                            {ex.is_cardio ? (
+                              <span className="font-mono text-xs text-pink-500">cardio</span>
+                            ) : (
+                              <span className="font-mono text-xs text-darkgray/40">
+                                {ex.sets.length} × {ex.muscle_groups.slice(0, 2).join(', ')}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <Button
+                        onClick={() => handleUseTemplate(template)}
+                        disabled={loadingTemplate}
+                        className="text-xs whitespace-nowrap"
+                      >
+                        {loadingTemplate ? '...' : 'Use'}
+                      </Button>
+                      <button
+                        onClick={() => handleDeleteTemplate(template.id)}
+                        className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all flex items-center justify-center"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Modal>
 
       {/* ── Exercise Library Modal ── */}
