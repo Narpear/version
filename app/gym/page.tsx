@@ -391,6 +391,60 @@ function ExerciseProgressCard({ name, history }: { name: string; history: Histor
   );
 }
 
+function TemplateCard({ template, onUse, onDelete, loadingTemplate, showDelete }: {
+  template: WorkoutTemplate;
+  onUse: (t: WorkoutTemplate) => void;
+  onDelete: (id: string) => void;
+  loadingTemplate: boolean;
+  showDelete: boolean;
+}) {
+  const exercises = template.exercises || [];
+  const totalCals = exercises.reduce((s, e) => s + (e.calories_burned || 0), 0);
+  const totalSets = exercises.reduce((s, e) => s + ((e.sets || []).length), 0);
+  return (
+    <div className="border-2 border-darkgray p-4 bg-white">
+      <div className="flex justify-between items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-mono font-bold">{template.template_name}</p>
+          <p className="font-mono text-xs text-darkgray/50 mt-0.5">
+            {exercises.length} exercise{exercises.length !== 1 ? 's' : ''}
+            {' · '}{totalSets} set{totalSets !== 1 ? 's' : ''}
+            {totalCals > 0 ? ` · ${totalCals} cal` : ''}
+          </p>
+          <div className="mt-2 space-y-1">
+            {exercises.map((ex, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="font-mono text-xs text-darkgray/60">{ex.exercise_name}</span>
+                {ex.is_cardio ? (
+                  <span className="font-mono text-xs text-pink-500">cardio</span>
+                ) : (
+                  <span className="font-mono text-xs text-darkgray/40">
+                    {(ex.sets || []).length} sets
+                    {(ex.muscle_groups || []).length > 0 ? ` · ${(ex.muscle_groups || []).slice(0, 2).join(', ')}` : ''}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 shrink-0">
+          <Button onClick={() => onUse(template)} disabled={loadingTemplate} className="text-xs whitespace-nowrap">
+            {loadingTemplate ? '...' : 'Use'}
+          </Button>
+          {showDelete && (
+            <button
+              onClick={() => onDelete(template.id)}
+              className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all flex items-center justify-center"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GymPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -436,6 +490,7 @@ export default function GymPage() {
 
   // Workout templates
   const [workoutTemplates, setWorkoutTemplates] = useState<WorkoutTemplate[]>([]);
+  const [publicWorkoutTemplates, setPublicWorkoutTemplates] = useState<WorkoutTemplate[]>([]);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -823,14 +878,23 @@ export default function GymPage() {
 
   const loadWorkoutTemplates = async (userId: string) => {
     try {
-      const { data } = await supabase
+      const { data: userTemplates } = await supabase
         .from('workout_templates')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-      if (data) setWorkoutTemplates(data);
+      if (userTemplates) setWorkoutTemplates(userTemplates);
     } catch (e) {
       console.log('Error loading workout templates');
+    }
+    try {
+      const { data: publicTemplates } = await supabase
+        .from('public_workout_templates')
+        .select('*')
+        .order('template_name');
+      if (publicTemplates) setPublicWorkoutTemplates(publicTemplates);
+    } catch (e) {
+      console.log('No public workout templates table');
     }
   };
 
@@ -1510,65 +1574,51 @@ export default function GymPage() {
       <Modal
         isOpen={showTemplatesModal}
         onClose={() => setShowTemplatesModal(false)}
-        title="My Workout Templates"
+        title="Workout Templates"
       >
-        {workoutTemplates.length === 0 ? (
+        {workoutTemplates.length > 0 && (
+          <>
+            <p className="font-pixel text-xs text-darkgray/50 mb-3 uppercase tracking-wide">My Workouts</p>
+            <div className="space-y-3 mb-6">
+              {workoutTemplates.map(template => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onUse={handleUseTemplate}
+                  onDelete={handleDeleteTemplate}
+                  loadingTemplate={loadingTemplate}
+                  showDelete
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {publicWorkoutTemplates.length > 0 && (
+          <>
+            <p className="font-pixel text-xs text-darkgray/50 mb-3 uppercase tracking-wide">Default Workouts</p>
+            <div className="space-y-3">
+              {publicWorkoutTemplates.map(template => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onUse={handleUseTemplate}
+                  onDelete={handleDeleteTemplate}
+                  loadingTemplate={loadingTemplate}
+                  showDelete={false}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {workoutTemplates.length === 0 && publicWorkoutTemplates.length === 0 && (
           <div className="text-center py-10">
             <LayoutGrid size={40} className="mx-auto mb-3 text-darkgray/20" />
             <p className="font-mono text-sm text-darkgray/60">No workout templates yet.</p>
             <p className="font-mono text-xs text-darkgray/40 mt-1">
-              Log exercises and click &ldquo;Save as Template&rdquo; to reuse your workouts.
+              Log exercises and click &ldquo;Save as Template&rdquo; to create one.
             </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {workoutTemplates.map(template => {
-              const totalCals = template.exercises.reduce((s, e) => s + (e.calories_burned || 0), 0);
-              const totalSets = template.exercises.reduce((s, e) => s + (e.sets?.length || 0), 0);
-              return (
-                <div key={template.id} className="border-2 border-darkgray p-4 bg-white">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono font-bold">{template.template_name}</p>
-                      <p className="font-mono text-xs text-darkgray/50 mt-0.5">
-                        {template.exercises.length} exercise{template.exercises.length !== 1 ? 's' : ''}
-                        {' · '}{totalSets} set{totalSets !== 1 ? 's' : ''}
-                        {totalCals > 0 ? ` · ${totalCals} cal` : ''}
-                      </p>
-                      <div className="mt-2 space-y-1">
-                        {template.exercises.map((ex, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-darkgray/60">{ex.exercise_name}</span>
-                            {ex.is_cardio ? (
-                              <span className="font-mono text-xs text-pink-500">cardio</span>
-                            ) : (
-                              <span className="font-mono text-xs text-darkgray/40">
-                                {ex.sets.length} × {ex.muscle_groups.slice(0, 2).join(', ')}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <Button
-                        onClick={() => handleUseTemplate(template)}
-                        disabled={loadingTemplate}
-                        className="text-xs whitespace-nowrap"
-                      >
-                        {loadingTemplate ? '...' : 'Use'}
-                      </Button>
-                      <button
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        className="p-2 border-2 border-darkgray bg-warning hover:bg-warning/70 transition-all flex items-center justify-center"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
       </Modal>
