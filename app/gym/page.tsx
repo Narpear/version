@@ -439,6 +439,7 @@ export default function GymPage() {
   const [showSaveWorkoutModal, setShowSaveWorkoutModal] = useState(false);
   const [workoutName, setWorkoutName] = useState('');
   const [savingWorkout, setSavingWorkout] = useState(false);
+  const [editingWorkoutTemplate, setEditingWorkoutTemplate] = useState<WorkoutTemplate | null>(null);
 
   // Library tabs
   const [libraryTab, setLibraryTab] = useState<'library' | 'myworkouts'>('library');
@@ -596,6 +597,7 @@ export default function GymPage() {
     setNotes('');
     setMuscleInput('');
     setEditingWorkout(null);
+    setEditingWorkoutTemplate(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -838,28 +840,38 @@ export default function GymPage() {
   const handleSaveAsWorkout = async () => {
     if (!user || !workoutName.trim() || !exerciseName) return;
     setSavingWorkout(true);
+    const exercises = [{
+      exercise_name: exerciseName,
+      muscle_groups: isCardio ? [] : muscleGroups,
+      is_cardio: isCardio,
+      sets: exerciseSets,
+      calories_burned: caloriesBurned,
+      notes: notes || null,
+    }];
     try {
-      const { data, error } = await supabase
-        .from('workout_templates')
-        .insert({
-          user_id: user.id,
-          template_name: workoutName.trim(),
-          exercises: [{
-            exercise_name: exerciseName,
-            muscle_groups: isCardio ? [] : muscleGroups,
-            is_cardio: isCardio,
-            sets: exerciseSets,
-            calories_burned: caloriesBurned,
-            notes: notes || null,
-          }],
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      setWorkoutTemplates(prev => [data, ...prev]);
+      if (editingWorkoutTemplate) {
+        const { data, error } = await supabase
+          .from('workout_templates')
+          .update({ template_name: workoutName.trim(), exercises })
+          .eq('id', editingWorkoutTemplate.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setWorkoutTemplates(prev => prev.map(t => t.id === editingWorkoutTemplate.id ? data : t));
+        toast('Workout updated!');
+      } else {
+        const { data, error } = await supabase
+          .from('workout_templates')
+          .insert({ user_id: user.id, template_name: workoutName.trim(), exercises })
+          .select()
+          .single();
+        if (error) throw error;
+        setWorkoutTemplates(prev => [data, ...prev]);
+        toast('Saved to My Workouts!');
+      }
       setShowSaveWorkoutModal(false);
       setWorkoutName('');
-      toast('Saved to My Workouts!');
+      setEditingWorkoutTemplate(null);
     } catch (e) {
       console.error(e);
       toast('Failed to save workout');
@@ -868,7 +880,7 @@ export default function GymPage() {
     }
   };
 
-  const handleSelectFromWorkoutTemplate = (template: WorkoutTemplate) => {
+  const fillFormFromTemplate = (template: WorkoutTemplate) => {
     const ex = (template.exercises || [])[0];
     if (!ex) return;
     setExerciseName(ex.exercise_name);
@@ -882,6 +894,20 @@ export default function GymPage() {
     setCaloriesBurned(ex.calories_burned || 0);
     setNotes(ex.notes || '');
     setMuscleInput('');
+  };
+
+  const handleSelectFromWorkoutTemplate = (template: WorkoutTemplate) => {
+    setEditingWorkoutTemplate(null);
+    setEditingWorkout(null);
+    fillFormFromTemplate(template);
+    setShowLibraryModal(false);
+    setShowAddModal(true);
+  };
+
+  const handleEditWorkoutTemplate = (template: WorkoutTemplate) => {
+    setEditingWorkoutTemplate(template);
+    setEditingWorkout(null);
+    fillFormFromTemplate(template);
     setShowLibraryModal(false);
     setShowAddModal(true);
   };
@@ -1387,11 +1413,11 @@ export default function GymPage() {
             <Button type="submit" className="flex-1">
               {editingWorkout ? 'Update Exercise' : 'Log Exercise'}
             </Button>
-            {!editingWorkout && exerciseName && (
+            {exerciseName && (
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => { setWorkoutName(exerciseName); setShowSaveWorkoutModal(true); }}
+                onClick={() => { setWorkoutName(editingWorkoutTemplate?.template_name || exerciseName); setShowSaveWorkoutModal(true); }}
               >
                 <Bookmark size={16} />
               </Button>
@@ -1403,11 +1429,14 @@ export default function GymPage() {
       {/* ── Save as Workout Modal ── */}
       <Modal
         isOpen={showSaveWorkoutModal}
-        onClose={() => { setShowSaveWorkoutModal(false); setWorkoutName(''); }}
-        title="Save as Workout"
+        onClose={() => { setShowSaveWorkoutModal(false); setWorkoutName(''); setEditingWorkoutTemplate(null); }}
+        title={editingWorkoutTemplate ? 'Update Workout' : 'Save as Workout'}
       >
         <p className="font-mono text-sm text-darkgray/60 mb-5">
-          Save <span className="font-bold text-darkgray">{exerciseName}</span> with its current sets and weights to My Workouts for quick re-use.
+          {editingWorkoutTemplate
+            ? <>Update <span className="font-bold text-darkgray">{editingWorkoutTemplate.template_name}</span> with the current sets and weights.</>
+            : <>Save <span className="font-bold text-darkgray">{exerciseName}</span> with its current sets and weights to My Workouts for quick re-use.</>
+          }
         </p>
         <Input
           label="Name"
@@ -1422,7 +1451,7 @@ export default function GymPage() {
             onClick={handleSaveAsWorkout}
             disabled={!workoutName.trim() || savingWorkout}
           >
-            {savingWorkout ? 'Saving...' : 'Save to My Workouts'}
+            {savingWorkout ? 'Saving...' : editingWorkoutTemplate ? 'Update Workout' : 'Save to My Workouts'}
           </Button>
         </div>
       </Modal>
@@ -1482,6 +1511,12 @@ export default function GymPage() {
                       <div className="mt-1">
                         <MuscleTags groups={ex.muscle_groups || []} isCardio={ex.is_cardio || false} />
                       </div>
+                    </button>
+                    <button
+                      onClick={() => handleEditWorkoutTemplate(template)}
+                      className="p-2 border-2 border-darkgray bg-accent/30 hover:bg-accent/60 transition-all shrink-0"
+                    >
+                      <Edit size={14} />
                     </button>
                     <button
                       onClick={() => handleDeleteWorkout(template.id)}
