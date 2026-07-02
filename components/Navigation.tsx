@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useBgTheme } from '@/lib/useTheme';
+import { genderToBgTheme } from '@/lib/useTheme';
 import { Home, Dumbbell, Utensils, Target, Droplet, Sparkles, User, Footprints } from 'lucide-react';
 
 const navItems = [
@@ -23,7 +23,18 @@ const ALWAYS_SHOW = ['home', 'profile'];
 export default function Navigation() {
   const pathname = usePathname();
   const [selectedTrackers, setSelectedTrackers] = useState<string[]>(['food', 'gym', 'progress']);
-  useBgTheme();
+  // Re-apply bg-theme on every navigation so gender changes on profile always reflect
+  useEffect(() => {
+    const saved = localStorage.getItem('bg-theme');
+    const valid = ['feminine', 'masculine', 'gender-neutral'];
+    if (saved && valid.includes(saved)) {
+      document.documentElement.setAttribute('data-bg-theme', saved);
+    } else {
+      const userData = localStorage.getItem('user');
+      const gender = userData ? JSON.parse(userData).gender : undefined;
+      document.documentElement.setAttribute('data-bg-theme', genderToBgTheme(gender));
+    }
+  }, [pathname]);
 
   // Read selected trackers from localStorage
   useEffect(() => {
