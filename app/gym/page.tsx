@@ -1493,7 +1493,6 @@ export default function GymPage() {
             value={templateName}
             onChange={e => setTemplateName(e.target.value)}
             placeholder="e.g., Push Day, Leg Day..."
-            onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveAsTemplate(); } }}
           />
         </div>
         <div className="mt-4">
