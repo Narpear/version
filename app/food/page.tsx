@@ -751,17 +751,17 @@ export default function FoodPage() {
       <Card className="mb-6 bg-success/10" title="Daily Summary">
         <div className="flex flex-col lg:flex-row lg:justify-center gap-6">
           {macroCaloriesTotal > 0 && (
-            <div className="lg:w-64 shrink-0">
+            <div className="lg:w-80 shrink-0">
               <div className="w-full h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart margin={{ top: 20, right: 50, bottom: 20, left: 50 }}>
                     <Pie
                       data={macroPieData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={80}
+                      outerRadius={65}
                       stroke="#4A4A4A"
                       strokeWidth={2}
                       label={({ cx, cy, midAngle, outerRadius, name, value }) => {
