@@ -312,6 +312,7 @@ export default function FoodPage() {
         const updatedLogs = foodLogs.map(log => log.id === editingFood.id ? data : log);
         setFoodLogs(updatedLogs);
         await updateDailyTotals(user.id, updatedLogs);
+        await loadWeeklyNutrition(user.id);
         toast('Updated!');
       } else {
         const { data, error } = await supabase
@@ -336,6 +337,7 @@ export default function FoodPage() {
         const updatedLogs = [...foodLogs, data];
         setFoodLogs(updatedLogs);
         await updateDailyTotals(user.id, updatedLogs);
+        await loadWeeklyNutrition(user.id);
         toast('Saved!');
       }
 
@@ -480,6 +482,7 @@ export default function FoodPage() {
       const updatedLogs = foodLogs.filter(log => log.id !== id);
       setFoodLogs(updatedLogs);
       await updateDailyTotals(user.id, updatedLogs);
+      await loadWeeklyNutrition(user.id);
       toast('Food deleted');
     } catch (error) {
       console.error('Error deleting food:', error);
@@ -525,6 +528,7 @@ export default function FoodPage() {
       const updatedLogs = [...foodLogs, ...(data || [])];
       setFoodLogs(updatedLogs);
       await updateDailyTotals(user.id, updatedLogs);
+      await loadWeeklyNutrition(user.id);
       toast(`Logged ${reviewMeal.meal_name}!`);
       setReviewMeal(null);
       setReviewItems([]);
