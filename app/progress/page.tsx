@@ -819,6 +819,13 @@ export default function ProgressPage() {
         </Card>
       )}
 
+      {/* Weight Chart */}
+      {weightHistory.length > 0 && (
+        <Card title="Progress" className="mb-6">
+          <WeightChart data={weightHistory} goal={activeGoal} />
+        </Card>
+      )}
+
       {/* Goal ETA */}
       {activeGoal && goalETA && (
         <Card title="Goal ETA" className="mb-6">
@@ -861,13 +868,6 @@ export default function ProgressPage() {
           <p className="text-pixel-xs text-darkgray/40 italic mt-4 pt-4 border-t-2 border-darkgray/10">
             Projected from your weight trend over the last 21 days. Not a guarantee — actual progress varies with adherence, water retention, and metabolic adaptation.
           </p>
-        </Card>
-      )}
-
-      {/* Weight Chart */}
-      {weightHistory.length > 0 && (
-        <Card title="Progress" className="mb-6">
-          <WeightChart data={weightHistory} goal={activeGoal} />
         </Card>
       )}
 

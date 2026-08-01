@@ -749,64 +749,62 @@ export default function FoodPage() {
 
       {/* Daily Summary */}
       <Card className="mb-6 bg-success/10" title="Daily Summary">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="bg-white">
-            <p className="text-pixel-sm text-darkgray/70 mb-1">Total Calories</p>
-            <p className="font-mono text-2xl">{totalCalories}</p>
-          </Card>
-          <Card className="bg-white">
-            <p className="text-pixel-sm text-darkgray/70 mb-1">Protein</p>
-            <p className="font-mono text-2xl">{totalProtein.toFixed(1)}g</p>
-          </Card>
-          <Card className="bg-white">
-            <p className="text-pixel-sm text-darkgray/70 mb-1">Carbs</p>
-            <p className="font-mono text-2xl">{totalCarbs.toFixed(1)}g</p>
-          </Card>
-          <Card className="bg-white">
-            <p className="text-pixel-sm text-darkgray/70 mb-1">Fats</p>
-            <p className="font-mono text-2xl">{totalFats.toFixed(1)}g</p>
-          </Card>
-          <Card className="bg-white">
-            <p className="text-pixel-sm text-darkgray/70 mb-1">Healthy Meals</p>
-            <p className="font-mono text-2xl">{healthyMeals}/{foodLogs.length}</p>
-          </Card>
+        <div className="flex flex-col lg:flex-row gap-6">
+          {macroCaloriesTotal > 0 && (
+            <div className="lg:w-64 shrink-0">
+              <div className="w-full h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={macroPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      stroke="#4A4A4A"
+                      strokeWidth={2}
+                      label={({ name, value }) => `${name} ${Math.round((value / macroCaloriesTotal) * 100)}%`}
+                    >
+                      {macroPieData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value?: number) => `${Math.round(value || 0)} cal`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-4 font-mono text-xs mt-2">
+                <span><span style={{ color: '#7BAFE0' }}>●</span> Protein</span>
+                <span><span style={{ color: '#7ACB4F' }}>●</span> Carbs</span>
+                <span><span style={{ color: '#E0935C' }}>●</span> Fats</span>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
+            <Card className="bg-white">
+              <p className="text-pixel-sm text-darkgray/70 mb-1">Total Calories</p>
+              <p className="font-mono text-2xl">{totalCalories}</p>
+            </Card>
+            <Card className="bg-white">
+              <p className="text-pixel-sm text-darkgray/70 mb-1">Protein</p>
+              <p className="font-mono text-2xl">{totalProtein.toFixed(1)}g</p>
+            </Card>
+            <Card className="bg-white">
+              <p className="text-pixel-sm text-darkgray/70 mb-1">Carbs</p>
+              <p className="font-mono text-2xl">{totalCarbs.toFixed(1)}g</p>
+            </Card>
+            <Card className="bg-white">
+              <p className="text-pixel-sm text-darkgray/70 mb-1">Fats</p>
+              <p className="font-mono text-2xl">{totalFats.toFixed(1)}g</p>
+            </Card>
+            <Card className="bg-white">
+              <p className="text-pixel-sm text-darkgray/70 mb-1">Healthy Meals</p>
+              <p className="font-mono text-2xl">{healthyMeals}/{foodLogs.length}</p>
+            </Card>
+          </div>
         </div>
       </Card>
-
-      {/* Macro Split (current day, by calories) */}
-      {macroCaloriesTotal > 0 && (
-        <Card className="mb-6" title="Macro Split">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="w-full md:w-64 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={macroPieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    stroke="#4A4A4A"
-                    strokeWidth={2}
-                    label={({ name, value }) => `${name} ${Math.round((value / macroCaloriesTotal) * 100)}%`}
-                  >
-                    {macroPieData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value?: number) => `${Math.round(value || 0)} cal`} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-3 md:grid-cols-1 gap-4 font-mono text-sm">
-              <p><span style={{ color: '#7BAFE0' }}>●</span> Protein: {totalProtein.toFixed(1)}g ({Math.round((macroCalories.protein / macroCaloriesTotal) * 100)}%)</p>
-              <p><span style={{ color: '#7ACB4F' }}>●</span> Carbs: {totalCarbs.toFixed(1)}g ({Math.round((macroCalories.carbs / macroCaloriesTotal) * 100)}%)</p>
-              <p><span style={{ color: '#E0935C' }}>●</span> Fats: {totalFats.toFixed(1)}g ({Math.round((macroCalories.fats / macroCaloriesTotal) * 100)}%)</p>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Meals by Type */}
       {groupedMeals.map(({ type, meals }) => (
