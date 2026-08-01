@@ -981,6 +981,7 @@ export default function FoodPage() {
               value={protein}
               onChange={(e) => setProtein(Math.round(parseFloat(e.target.value) * 10) / 10)}
               placeholder="20"
+              step={0.1}
               min={0}
             />
 
@@ -990,6 +991,7 @@ export default function FoodPage() {
               value={carbs}
               onChange={(e) => setCarbs(Math.round(parseFloat(e.target.value) * 10) / 10)}
               placeholder="50"
+              step={0.1}
               min={0}
             />
 
@@ -999,6 +1001,7 @@ export default function FoodPage() {
               value={fats}
               onChange={(e) => setFats(Math.round(parseFloat(e.target.value) * 10) / 10)}
               placeholder="10"
+              step={0.1}
               min={0}
             />
           </div>
