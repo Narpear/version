@@ -8,7 +8,7 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { User, FoodLog, FoodTemplate } from '@/types';
 import { Utensils, Trash2, Save, ChevronLeft, ChevronRight, Star, X, Search, Edit, Camera, UtensilsCrossed } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 import dynamic from 'next/dynamic';
@@ -678,6 +678,19 @@ export default function FoodPage() {
     meals: foodLogs.filter(log => log.meal_type === type),
   }));
 
+  // Macro split (by calories, not grams — fat is calorie-dense so a gram-based split understates it)
+  const macroCalories = {
+    protein: totalProtein * 4,
+    carbs: totalCarbs * 4,
+    fats: totalFats * 9,
+  };
+  const macroCaloriesTotal = macroCalories.protein + macroCalories.carbs + macroCalories.fats;
+  const macroPieData = [
+    { name: 'Protein', value: macroCalories.protein, color: '#B5DEFF' },
+    { name: 'Carbs', value: macroCalories.carbs, color: '#C1FBA4' },
+    { name: 'Fats', value: macroCalories.fats, color: '#FFCBA4' },
+  ].filter(m => m.value > 0);
+
   // Review meal totals
   const reviewTotalCals = reviewItems.reduce((sum, item) => sum + item.calories * item.adjustedQty, 0);
   const reviewTotalProtein = reviewItems.reduce((sum, item) => sum + item.protein_g * item.adjustedQty, 0);
@@ -759,6 +772,41 @@ export default function FoodPage() {
           </Card>
         </div>
       </Card>
+
+      {/* Macro Split (current day, by calories) */}
+      {macroCaloriesTotal > 0 && (
+        <Card className="mb-6" title="Macro Split">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-full md:w-64 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={macroPieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={90}
+                    stroke="#4A4A4A"
+                    strokeWidth={2}
+                    label={({ name, value }) => `${name} ${Math.round((value / macroCaloriesTotal) * 100)}%`}
+                  >
+                    {macroPieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value?: number) => `${Math.round(value || 0)} cal`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-3 md:grid-cols-1 gap-4 font-mono text-sm">
+              <p><span style={{ color: '#7BAFE0' }}>●</span> Protein: {totalProtein.toFixed(1)}g ({Math.round((macroCalories.protein / macroCaloriesTotal) * 100)}%)</p>
+              <p><span style={{ color: '#7ACB4F' }}>●</span> Carbs: {totalCarbs.toFixed(1)}g ({Math.round((macroCalories.carbs / macroCaloriesTotal) * 100)}%)</p>
+              <p><span style={{ color: '#E0935C' }}>●</span> Fats: {totalFats.toFixed(1)}g ({Math.round((macroCalories.fats / macroCaloriesTotal) * 100)}%)</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Meals by Type */}
       {groupedMeals.map(({ type, meals }) => (

@@ -426,6 +426,53 @@ export default function ProgressPage() {
   const progressPercent = Math.min(progress * 100, 100);
   const progressColor = getProgressColor(progress);
 
+  // Goal ETA — linear regression on recent weight entries, projected to goal_weight_kg
+  const calculateGoalETA = () => {
+    if (!activeGoal || activeGoal.goal_type === 'maintenance') return null;
+
+    const windowDays = 21;
+    const cutoff = new Date(today);
+    cutoff.setDate(cutoff.getDate() - windowDays);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const points = weightHistory.filter(h => h.date >= cutoffStr && h.weight != null);
+
+    if (points.length < 3) return { status: 'insufficient' as const };
+
+    const x0 = new Date(points[0].date).getTime();
+    const xs = points.map(p => (new Date(p.date).getTime() - x0) / 86400000);
+    const ys = points.map(p => Number(p.weight));
+    const n = xs.length;
+    const sumX = xs.reduce((a, b) => a + b, 0);
+    const sumY = ys.reduce((a, b) => a + b, 0);
+    const sumXY = xs.reduce((s, x, i) => s + x * ys[i], 0);
+    const sumXX = xs.reduce((s, x) => s + x * x, 0);
+    const denom = n * sumXX - sumX * sumX;
+    if (denom === 0) return { status: 'insufficient' as const };
+
+    const slopePerDay = (n * sumXY - sumX * sumY) / denom;
+    const lastWeight = ys[ys.length - 1];
+    const remaining = activeGoal.goal_weight_kg - lastWeight;
+
+    if (Math.abs(remaining) < 0.1) return { status: 'reached' as const };
+
+    const movingTowardGoal = (remaining > 0 && slopePerDay > 0) || (remaining < 0 && slopePerDay < 0);
+    if (!movingTowardGoal) return { status: 'diverging' as const, slopePerDay, remaining };
+
+    const daysNeeded = remaining / slopePerDay;
+    const etaDate = new Date(today);
+    etaDate.setDate(etaDate.getDate() + Math.round(daysNeeded));
+
+    return {
+      status: 'projected' as const,
+      slopePerDay,
+      remaining,
+      weeksNeeded: daysNeeded / 7,
+      etaDate,
+    };
+  };
+
+  const goalETA = calculateGoalETA();
+
   const bmi =
     user?.height_cm && (dailyEntry?.weight_kg || activeGoal?.start_weight_kg)
       ? (Number(dailyEntry?.weight_kg || activeGoal?.start_weight_kg) / Math.pow(Number(user.height_cm) / 100, 2))
@@ -769,6 +816,51 @@ export default function ProgressPage() {
               </div>
             )}
           </div>
+        </Card>
+      )}
+
+      {/* Goal ETA */}
+      {activeGoal && goalETA && (
+        <Card title="Goal ETA" className="mb-6">
+          {goalETA.status === 'insufficient' && (
+            <p className="font-mono text-sm text-darkgray/70">
+              Not enough recent weigh-ins to project a trend yet. Log your weight on at least 3 days within the last 3 weeks to see an ETA.
+            </p>
+          )}
+          {goalETA.status === 'reached' && (
+            <p className="font-mono text-lg font-bold" style={{ color: '#2d7a2d' }}>
+              You&apos;re already at your goal weight!
+            </p>
+          )}
+          {goalETA.status === 'diverging' && (
+            <p className="font-mono text-sm" style={{ color: '#c92a2a' }}>
+              Your recent weight trend is moving away from your goal ({Math.abs(goalETA.slopePerDay * 7).toFixed(2)} kg/week the wrong direction). Keep tracking — the projection will update as your trend changes.
+            </p>
+          )}
+          {goalETA.status === 'projected' && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-pixel-sm text-darkgray/70 mb-1">Recent Trend</p>
+                <p className="font-mono text-xl font-bold">{Math.abs(goalETA.slopePerDay * 7).toFixed(2)} kg/week</p>
+                <p className="font-mono text-xs text-darkgray/50">{goalETA.slopePerDay < 0 ? 'losing' : 'gaining'}, last 21 days</p>
+              </div>
+              <div>
+                <p className="text-pixel-sm text-darkgray/70 mb-1">Remaining</p>
+                <p className="font-mono text-xl font-bold">{Math.abs(goalETA.remaining).toFixed(1)} kg</p>
+                <p className="font-mono text-xs text-darkgray/50">to {activeGoal.goal_weight_kg} kg</p>
+              </div>
+              <div>
+                <p className="text-pixel-sm text-darkgray/70 mb-1">Estimated Date</p>
+                <p className="font-mono text-xl font-bold">
+                  {goalETA.etaDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+                <p className="font-mono text-xs text-darkgray/50">≈{goalETA.weeksNeeded.toFixed(1)} weeks from today</p>
+              </div>
+            </div>
+          )}
+          <p className="text-pixel-xs text-darkgray/40 italic mt-4 pt-4 border-t-2 border-darkgray/10">
+            Projected from your weight trend over the last 21 days. Not a guarantee — actual progress varies with adherence, water retention, and metabolic adaptation.
+          </p>
         </Card>
       )}
 
