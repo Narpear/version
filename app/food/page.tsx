@@ -764,7 +764,27 @@ export default function FoodPage() {
                       outerRadius={80}
                       stroke="#4A4A4A"
                       strokeWidth={2}
-                      label={({ name, value }) => `${name} ${Math.round((value / macroCaloriesTotal) * 100)}%`}
+                      label={({ cx, cy, midAngle, outerRadius, name, value }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = (outerRadius ?? 0) + 18;
+                        const angle = midAngle ?? 0;
+                        const x = Number(cx) + radius * Math.cos(-angle * RADIAN);
+                        const y = Number(cy) + radius * Math.sin(-angle * RADIAN);
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            fill="#2d2d2d"
+                            fontWeight="bold"
+                            fontSize={12}
+                            fontFamily="monospace"
+                            textAnchor={x > Number(cx) ? 'start' : 'end'}
+                            dominantBaseline="central"
+                          >
+                            {`${name} ${Math.round((value / macroCaloriesTotal) * 100)}%`}
+                          </text>
+                        );
+                      }}
                     >
                       {macroPieData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
@@ -781,27 +801,27 @@ export default function FoodPage() {
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 flex-1">
-            <Card className="bg-white">
-              <p className="text-pixel-sm text-darkgray/70 mb-1">Total Calories</p>
-              <p className="font-mono text-2xl">{totalCalories}</p>
-            </Card>
-            <Card className="bg-white">
-              <p className="text-pixel-sm text-darkgray/70 mb-1">Protein</p>
-              <p className="font-mono text-2xl">{totalProtein.toFixed(1)}g</p>
-            </Card>
-            <Card className="bg-white">
-              <p className="text-pixel-sm text-darkgray/70 mb-1">Carbs</p>
-              <p className="font-mono text-2xl">{totalCarbs.toFixed(1)}g</p>
-            </Card>
-            <Card className="bg-white">
-              <p className="text-pixel-sm text-darkgray/70 mb-1">Fats</p>
-              <p className="font-mono text-2xl">{totalFats.toFixed(1)}g</p>
-            </Card>
-            <Card className="bg-white">
-              <p className="text-pixel-sm text-darkgray/70 mb-1">Healthy Meals</p>
-              <p className="font-mono text-2xl">{healthyMeals}/{foodLogs.length}</p>
-            </Card>
+          <div className="flex-1 flex flex-col justify-center divide-y-2 divide-darkgray/10 bg-white border-2 border-darkgray">
+            <div className="flex items-center justify-between px-4 py-3">
+              <p className="text-pixel-sm text-darkgray/70">Total Calories</p>
+              <p className="font-mono text-xl font-bold">{totalCalories}</p>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <p className="text-pixel-sm text-darkgray/70">Protein</p>
+              <p className="font-mono text-xl font-bold">{totalProtein.toFixed(1)}g</p>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <p className="text-pixel-sm text-darkgray/70">Carbs</p>
+              <p className="font-mono text-xl font-bold">{totalCarbs.toFixed(1)}g</p>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <p className="text-pixel-sm text-darkgray/70">Fats</p>
+              <p className="font-mono text-xl font-bold">{totalFats.toFixed(1)}g</p>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <p className="text-pixel-sm text-darkgray/70">Healthy Meals</p>
+              <p className="font-mono text-xl font-bold">{healthyMeals}/{foodLogs.length}</p>
+            </div>
           </div>
         </div>
       </Card>
