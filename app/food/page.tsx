@@ -749,7 +749,7 @@ export default function FoodPage() {
 
       {/* Daily Summary */}
       <Card className="mb-6 bg-success/10" title="Daily Summary">
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row lg:justify-center gap-6">
           {macroCaloriesTotal > 0 && (
             <div className="lg:w-64 shrink-0">
               <div className="w-full h-56">
@@ -801,7 +801,7 @@ export default function FoodPage() {
               </div>
             </div>
           )}
-          <div className="flex-1 flex flex-col justify-center divide-y-2 divide-darkgray/10 bg-white border-2 border-darkgray">
+          <div className="w-full lg:w-80 shrink-0 flex flex-col justify-center divide-y-2 divide-darkgray/10 bg-white border-2 border-darkgray">
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-pixel-sm text-darkgray/70">Total Calories</p>
               <p className="font-mono text-xl font-bold">{totalCalories}</p>
