@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { User, Goal } from '@/types';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal, calculateProgress, getProgressColor } from '@/lib/calculations';
 import { useToast } from '@/components/ui/ToastProvider';
-import { Edit, X, Check } from 'lucide-react';
+import { Edit, X, Check, Trash2 } from 'lucide-react';
 import TrackerPicker from '@/components/TrackerPicker';
 import { useBgTheme, genderToBgTheme } from '@/lib/useTheme';
 
@@ -32,6 +32,11 @@ export default function ProfilePage() {
   const [editAge, setEditAge] = useState(0);
   const [editHeight, setEditHeight] = useState(0);
   const [editGender, setEditGender] = useState<'male' | 'female' | 'non-binary'>('female');
+
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Goal form state
   const [goalType, setGoalType] = useState<'loss' | 'gain' | 'maintenance'>('loss');
@@ -227,6 +232,28 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user || deleteConfirmText !== user.name) return;
+    setDeletingAccount(true);
+    try {
+      const res = await fetch('/api/user/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      localStorage.removeItem('user');
+      localStorage.removeItem('needsOnboarding');
+      router.push('/login');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast('Failed to delete account');
+      setDeletingAccount(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('needsOnboarding');
@@ -359,6 +386,50 @@ export default function ProfilePage() {
                   <X size={14} className="inline mr-2" />
                   Cancel
                 </Button>
+              </div>
+
+              <div className="mt-6 pt-4 border-t-2 border-darkgray/20">
+                {!showDeleteConfirm ? (
+                  <Button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    variant="secondary"
+                    className="w-full text-red-600! border-red-600!"
+                  >
+                    <Trash2 size={14} className="inline mr-2" />
+                    Delete Account
+                  </Button>
+                ) : (
+                  <div className="p-4 bg-red-50 border-2 border-red-600 space-y-3">
+                    <p className="font-mono text-sm text-red-700">
+                      This permanently deletes your account and all your data — food logs, gym logs, goals, progress, everything. This cannot be undone.
+                    </p>
+                    <p className="text-pixel-sm">
+                      Type <span className="font-bold">{user.name}</span> to confirm:
+                    </p>
+                    <Input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={e => setDeleteConfirmText(e.target.value)}
+                      placeholder={user.name}
+                    />
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirmText !== user.name || deletingAccount}
+                        className="flex-1 bg-red-600! border-red-600!"
+                      >
+                        {deletingAccount ? 'Deleting...' : 'Permanently Delete'}
+                      </Button>
+                      <Button
+                        onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+                        variant="secondary"
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
