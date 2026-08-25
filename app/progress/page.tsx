@@ -185,15 +185,24 @@ export default function ProgressPage() {
         // Calculate cumulative deficits from all entries since goal start
         const { data: allEntries } = await supabase
           .from('daily_entries')
-          .select('apparent_deficit, actual_deficit')
+          .select('apparent_deficit, weight_kg, date')
           .eq('user_id', userId)
           .gte('date', goalData.start_date)
-          .not('apparent_deficit', 'is', null);
-          
+          .not('apparent_deficit', 'is', null)
+          .order('date', { ascending: false });
+
         if (allEntries) {
           const cumulativeApparent = allEntries.reduce((sum, e) => sum + (e.apparent_deficit || 0), 0);
-          const cumulativeActual = allEntries.reduce((sum, e) => sum + (e.actual_deficit || 0), 0);
-          
+
+          // Actual deficit comes from real weight change (start weight vs latest tracked weight),
+          // not a per-entry column — daily_entries has no actual_deficit field.
+          const latestWeight = allEntries.find(e => e.weight_kg)?.weight_kg || goalData.start_weight_kg;
+          const cumulativeActual = calculateActualDeficit(
+            goalData.start_weight_kg,
+            parseFloat(latestWeight),
+            goalData.goal_type
+          );
+
           // Update goal with cumulative values
           await supabase
             .from('goals')

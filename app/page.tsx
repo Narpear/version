@@ -80,57 +80,57 @@ export default function HomePage() {
 
   const calculateStreak = async (userId: string) => {
     try {
-      // Get all daily entries, ordered by date descending
-      const { data } = await supabase
+      // Get all daily entries (food/gym/water/weight logging lives here)
+      const { data: entries } = await supabase
         .from('daily_entries')
-        .select('date, total_calories_in, total_calories_out, water_glasses')
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
+        .select('date, total_calories_in, total_calories_out, water_glasses, weight_kg')
+        .eq('user_id', userId);
 
-      if (!data || data.length === 0) {
+      // Steps are tracked in their own table, not on daily_entries
+      const { data: stepsEntries } = await supabase
+        .from('steps_logs')
+        .select('date, steps')
+        .eq('user_id', userId);
+
+      // Build a set of every date that has *any* logged activity
+      const activeDates = new Set<string>();
+      (entries || []).forEach(e => {
+        const hasActivity =
+          (e.total_calories_in || 0) > 0 ||
+          (e.total_calories_out || 0) > 0 ||
+          (e.water_glasses || 0) > 0 ||
+          !!e.weight_kg;
+        if (hasActivity) activeDates.add(e.date);
+      });
+      (stepsEntries || []).forEach(s => {
+        if ((s.steps || 0) > 0) activeDates.add(s.date);
+      });
+
+      if (activeDates.size === 0) {
         setStreak(0);
         return;
       }
 
+      const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+      const today = new Date();
+      const todayStr = toDateStr(today);
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = toDateStr(yesterday);
+
+      // Streak is broken unless today or yesterday was logged (yesterday keeps
+      // the streak alive until today's activity is logged)
+      if (!activeDates.has(todayStr) && !activeDates.has(yesterdayStr)) {
+        setStreak(0);
+        return;
+      }
+
+      // Walk backward day-by-day counting consecutive active dates
       let currentStreak = 0;
-      const todayDate = new Date().toISOString().split('T')[0];
-      
-      // Check if today has any logging
-      const todayLogged = data[0]?.date === todayDate && 
-        (data[0].total_calories_in > 0 || data[0].total_calories_out > 0 || data[0].water_glasses > 0);
-
-      if (!todayLogged && data[0]?.date !== todayDate) {
-        // Streak is broken if today isn't logged and latest entry isn't today
-        setStreak(0);
-        return;
-      }
-
-      // Count consecutive days with any activity
-      for (let i = 0; i < data.length; i++) {
-        const entry = data[i];
-        const hasActivity = entry.total_calories_in > 0 || 
-                           entry.total_calories_out > 0 || 
-                           entry.water_glasses > 0;
-
-        if (hasActivity) {
-          // Check if this date is consecutive with previous
-          if (i === 0) {
-            currentStreak = 1;
-          } else {
-            const currentDate = new Date(entry.date);
-            const prevDate = new Date(data[i - 1].date);
-            const diffTime = prevDate.getTime() - currentDate.getTime();
-            const diffDays = diffTime / (1000 * 3600 * 24);
-
-            if (diffDays === 1) {
-              currentStreak++;
-            } else {
-              break;
-            }
-          }
-        } else {
-          break;
-        }
+      const cursor = activeDates.has(todayStr) ? new Date(today) : new Date(yesterday);
+      while (activeDates.has(toDateStr(cursor))) {
+        currentStreak++;
+        cursor.setDate(cursor.getDate() - 1);
       }
 
       setStreak(currentStreak);
