@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.food_logs (
   fats_g      numeric NOT NULL DEFAULT 0,
   is_healthy  boolean NOT NULL DEFAULT false,
   meal_type   text, -- 'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack'
+  quantity    numeric NOT NULL DEFAULT 1,
   created_at  timestamp with time zone DEFAULT now(),
   CONSTRAINT food_logs_pkey PRIMARY KEY (id)
 );

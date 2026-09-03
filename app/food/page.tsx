@@ -346,7 +346,7 @@ export default function FoodPage() {
       setEditingFood(null);
     } catch (error) {
       console.error('Error adding food:', error);
-      alert('Failed to add food');
+      alert(`Failed to add food: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 

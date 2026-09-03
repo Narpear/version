@@ -87,6 +87,7 @@ export interface FoodLog {
   fats_g: number;
   is_healthy: boolean;
   meal_type: 'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack' | null;
+  quantity?: number;
 }
 
 export interface SkincareLog {
