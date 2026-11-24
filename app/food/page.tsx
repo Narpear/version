@@ -82,6 +82,7 @@ export default function FoodPage() {
   // Meal review state
   const [reviewMeal, setReviewMeal] = useState<MealTemplate | null>(null);
   const [reviewItems, setReviewItems] = useState<(MealItem & { adjustedQty: number })[]>([]);
+  const [portionPct, setPortionPct] = useState<number>(100);
   const [reviewMealType, setReviewMealType] = useState<'breakfast' | 'brunch' | 'lunch' | 'dinner' | 'snack'>('breakfast');
 
   // Save meal state
@@ -495,8 +496,21 @@ export default function FoodPage() {
   const openReviewMeal = (meal: MealTemplate) => {
     setReviewMeal(meal);
     setReviewItems(meal.items.map(item => ({ ...item, adjustedQty: item.quantity })));
+    setPortionPct(100);
     setReviewMealType('breakfast');
     setShowMealsModal(false);
+  };
+
+  // Scale every item to a percentage of the saved meal's quantities.
+  // Per-item qty can still be tweaked afterwards.
+  const applyPortion = (pct: number) => {
+    const safe = isNaN(pct) || pct < 0 ? 0 : pct;
+    setPortionPct(safe);
+    if (!reviewMeal) return;
+    setReviewItems(reviewMeal.items.map(item => ({
+      ...item,
+      adjustedQty: parseFloat((item.quantity * safe / 100).toFixed(3)),
+    })));
   };
 
   const handleLogMeal = async () => {
@@ -1289,7 +1303,7 @@ export default function FoodPage() {
       {/* ── Review & Adjust Meal Modal ── */}
       <Modal
         isOpen={!!reviewMeal}
-        onClose={() => { setReviewMeal(null); setReviewItems([]); }}
+        onClose={() => { setReviewMeal(null); setReviewItems([]); setPortionPct(100); }}
         title={`Log: ${reviewMeal?.meal_name || ''}`}
       >
         {/* Meal type selector */}
@@ -1306,6 +1320,37 @@ export default function FoodPage() {
             <option value="dinner">Dinner</option>
             <option value="snack">Snack</option>
           </select>
+        </div>
+
+        {/* Portion of meal */}
+        <div className="mb-5">
+          <label className="block text-pixel-sm mb-2">Portion of meal (%)</label>
+          <div className="flex items-center gap-2 flex-wrap">
+            {[25, 33, 50, 75, 100].map(p => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => applyPortion(p)}
+                className={`px-3 py-1 border-2 border-darkgray font-mono text-xs transition-all ${
+                  portionPct === p ? 'bg-primary text-darkgray font-bold' : 'bg-white hover:bg-accent/30'
+                }`}
+              >
+                {p}%
+              </button>
+            ))}
+            <input
+              type="number"
+              value={portionPct === 0 ? '' : portionPct}
+              onChange={(e) => applyPortion(parseFloat(e.target.value))}
+              min={0}
+              step={5}
+              className="input-pixel w-24 text-center"
+              aria-label="Custom portion percentage"
+            />
+          </div>
+          <p className="font-mono text-xs text-darkgray/60 mt-1">
+            Scales every item below. You can still edit individual quantities.
+          </p>
         </div>
 
         {/* Items */}
