@@ -813,6 +813,7 @@ export default function FoodPage() {
                 <span><span style={{ color: '#7ACB4F' }}>●</span> Carbs</span>
                 <span><span style={{ color: '#E0935C' }}>●</span> Fats</span>
               </div>
+              <p className="text-center font-mono text-xs text-darkgray/60 mt-1">% of calories from each macro</p>
             </div>
           )}
           <div className="w-full lg:w-80 shrink-0 flex flex-col justify-center divide-y-2 divide-darkgray/10 bg-white border-2 border-darkgray">
@@ -822,15 +823,24 @@ export default function FoodPage() {
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-pixel-sm text-darkgray/70">Protein</p>
-              <p className="font-mono text-xl font-bold">{totalProtein.toFixed(1)}g</p>
+              <div className="text-right">
+                <p className="font-mono text-xl font-bold">{totalProtein.toFixed(1)}g</p>
+                <p className="font-mono text-xs text-darkgray/60">{Math.round(macroCalories.protein)} kcal</p>
+              </div>
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-pixel-sm text-darkgray/70">Carbs</p>
-              <p className="font-mono text-xl font-bold">{totalCarbs.toFixed(1)}g</p>
+              <div className="text-right">
+                <p className="font-mono text-xl font-bold">{totalCarbs.toFixed(1)}g</p>
+                <p className="font-mono text-xs text-darkgray/60">{Math.round(macroCalories.carbs)} kcal</p>
+              </div>
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-pixel-sm text-darkgray/70">Fats</p>
-              <p className="font-mono text-xl font-bold">{totalFats.toFixed(1)}g</p>
+              <div className="text-right">
+                <p className="font-mono text-xl font-bold">{totalFats.toFixed(1)}g</p>
+                <p className="font-mono text-xs text-darkgray/60">{Math.round(macroCalories.fats)} kcal</p>
+              </div>
             </div>
             <div className="flex items-center justify-between px-4 py-3">
               <p className="text-pixel-sm text-darkgray/70">Healthy Meals</p>
