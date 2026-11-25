@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -11,7 +11,7 @@ import { User, GymLog, GymLogSet, ExerciseLibrary, WorkoutTemplate } from '@/typ
 import {
   Dumbbell, Trash2, ChevronLeft, ChevronRight, X,
   Search, Edit, Flame, Zap, Plus, BookOpen, ChevronDown, TrendingUp,
-  Bookmark
+  Bookmark, Copy
 } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
@@ -90,10 +90,33 @@ const MUSCLE_COLORS: Record<string, string> = {
 const FALLBACK_COLOR = 'bg-gray-100 border-gray-300 text-gray-800';
 
 interface SetEntry {
-  weight_kg: number;
+  weight_kg: number;      // always stored in kg
+  weight_text: string;    // what the user typed, in the current display unit
   reps: number;
   notes: string;
 }
+
+// ── Weight units ──────────────────────────────────────────────────────────────
+// Weights are always stored in kg; the unit only affects input and display.
+type WeightUnit = 'kg' | 'lbs';
+const KG_PER_LB = 0.45359237;
+const WeightUnitContext = createContext<WeightUnit>('kg');
+
+const kgToUnit = (kg: number, unit: WeightUnit) => (unit === 'kg' ? kg : kg / KG_PER_LB);
+const unitToKg = (v: number, unit: WeightUnit) => (unit === 'kg' ? v : v * KG_PER_LB);
+// Round for display: kg to 2 decimals, lbs to 1; drops trailing zeros.
+const roundForUnit = (v: number, unit: WeightUnit) => Number(v.toFixed(unit === 'kg' ? 2 : 1));
+const fmtWeight = (kg: number | string | null | undefined, unit: WeightUnit) => {
+  const n = typeof kg === 'string' ? parseFloat(kg) : kg;
+  if (n === null || n === undefined || isNaN(n)) return '';
+  return `${roundForUnit(kgToUnit(n, unit), unit)} ${unit}`;
+};
+const makeSet = (kg: number, reps: number, notes: string, unit: WeightUnit): SetEntry => ({
+  weight_kg: kg,
+  weight_text: kg ? String(roundForUnit(kgToUnit(kg, unit), unit)) : '',
+  reps,
+  notes,
+});
 
 function Modal({ isOpen, onClose, title, children }: {
   isOpen: boolean;
@@ -143,6 +166,7 @@ function ExerciseRow({ log, onEdit, onDelete }: {
   onEdit: (log: GymLog) => void;
   onDelete: (id: string) => void;
 }) {
+  const unit = useContext(WeightUnitContext);
   const sortedSets = log.gym_log_sets && log.gym_log_sets.length > 0
     ? [...log.gym_log_sets].sort((a, b) => a.set_number - b.set_number)
     : null;
@@ -162,7 +186,7 @@ function ExerciseRow({ log, onEdit, onDelete }: {
               {sortedSets.map((s, i) => (
                 <div key={s.id || i} className="flex items-center gap-3 font-mono text-sm text-darkgray/70">
                   <span className="text-xs text-darkgray/40 w-10 shrink-0">Set {s.set_number}</span>
-                  {s.weight_kg ? <span>{s.weight_kg} kg</span> : null}
+                  {s.weight_kg ? <span>{fmtWeight(s.weight_kg, unit)}</span> : null}
                   {s.reps ? <span>× {s.reps} reps</span> : null}
                   {s.notes ? <span className="text-xs text-darkgray/40 italic truncate">— {s.notes}</span> : null}
                 </div>
@@ -172,7 +196,7 @@ function ExerciseRow({ log, onEdit, onDelete }: {
             /* Backward compat: old single-row format */
             <div className="flex flex-wrap gap-4 font-mono text-sm text-darkgray/70">
               {log.sets && log.reps ? <span>{log.sets} sets × {log.reps} reps</span> : null}
-              {log.weight_kg ? <span>{log.weight_kg} kg</span> : null}
+              {log.weight_kg ? <span>{fmtWeight(log.weight_kg, unit)}</span> : null}
             </div>
           )}
 
@@ -215,7 +239,12 @@ interface HistoryPoint {
   reps: number | null;
 }
 
-function ProgressChart({ points }: { points: HistoryPoint[] }) {
+function ProgressChart({ points: rawPoints }: { points: HistoryPoint[] }) {
+  const unit = useContext(WeightUnitContext);
+  const points = rawPoints.map(p => ({
+    ...p,
+    weight_kg: p.weight_kg === null ? null : roundForUnit(kgToUnit(p.weight_kg, unit), unit),
+  }));
   const [tooltip, setTooltip] = useState<{ idx: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -311,7 +340,7 @@ function ProgressChart({ points }: { points: HistoryPoint[] }) {
             top: `${Math.max(0, ((activeY - PAD.top) / iH) * 100 - 30)}%`,
           }}
         >
-          <div className="font-bold text-sm">{activePoint.weight_kg} kg</div>
+          <div className="font-bold text-sm">{activePoint.weight_kg} {unit}</div>
           {activePoint.sets && activePoint.reps && (
             <div className="text-white/70">{activePoint.sets} × {activePoint.reps} reps</div>
           )}
@@ -326,6 +355,7 @@ function ProgressChart({ points }: { points: HistoryPoint[] }) {
 
 function ExerciseProgressCard({ name, history }: { name: string; history: HistoryPoint[] }) {
   const [open, setOpen] = useState(false);
+  const unit = useContext(WeightUnitContext);
 
   const withWeight = history.filter(p => p.weight_kg !== null && p.weight_kg > 0);
   const latest = withWeight[withWeight.length - 1];
@@ -346,7 +376,7 @@ function ExerciseProgressCard({ name, history }: { name: string; history: Histor
         </div>
         <div className="flex items-center gap-3 shrink-0 ml-4">
           <span className="font-mono text-xs text-darkgray/50 hidden sm:block">
-            {latest ? `${latest.weight_kg} kg · ` : ''}
+            {latest ? `${fmtWeight(latest.weight_kg, unit)} · ` : ''}
             {history.length} session{history.length !== 1 ? 's' : ''}
           </span>
           <ChevronDown
@@ -379,7 +409,7 @@ function ExerciseProgressCard({ name, history }: { name: string; history: Histor
                   })}
                 </span>
                 <span className="text-darkgray font-medium">
-                  {p.weight_kg ? `${p.weight_kg} kg` : '—'}
+                  {p.weight_kg ? fmtWeight(p.weight_kg, unit) : '—'}
                   {p.sets && p.reps ? `  ·  ${p.sets} × ${p.reps}` : ''}
                 </span>
               </div>
@@ -414,7 +444,8 @@ export default function GymPage() {
   const [exerciseName, setExerciseName] = useState('');
   const [muscleGroups, setMuscleGroups] = useState<string[]>([]);
   const [isCardio, setIsCardio] = useState(false);
-  const [exerciseSets, setExerciseSets] = useState<SetEntry[]>([{ weight_kg: 0, reps: 0, notes: '' }]);
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
+  const [exerciseSets, setExerciseSets] = useState<SetEntry[]>([makeSet(0, 0, '', 'kg')]);
   const [caloriesBurned, setCaloriesBurned] = useState(0);
   const [notes, setNotes] = useState('');
   const [warmupDone, setWarmupDone] = useState(false);
@@ -502,6 +533,22 @@ export default function GymPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Remember kg/lbs choice on this device
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('weightUnit');
+      if (saved === 'kg' || saved === 'lbs') setWeightUnit(saved);
+    } catch { /* ignore */ }
+  }, []);
+
+  const changeWeightUnit = (next: WeightUnit) => {
+    if (next === weightUnit) return;
+    setWeightUnit(next);
+    try { localStorage.setItem('weightUnit', next); } catch { /* ignore */ }
+    // Re-express any typed weights in the new unit (stored kg values don't change)
+    setExerciseSets(prev => prev.map(st => makeSet(st.weight_kg, st.reps, st.notes, next)));
   };
 
   const loadExerciseLibrary = async () => {
@@ -592,7 +639,7 @@ export default function GymPage() {
     setExerciseName('');
     setMuscleGroups([]);
     setIsCardio(false);
-    setExerciseSets([{ weight_kg: 0, reps: 0, notes: '' }]);
+    setExerciseSets([makeSet(0, 0, '', weightUnit)]);
     setCaloriesBurned(0);
     setNotes('');
     setMuscleInput('');
@@ -729,7 +776,7 @@ export default function GymPage() {
             : 0;
           if (weightForLog > previousBest) {
             firePRConfetti();
-            toast(`New PR on ${exerciseName}! ${weightForLog}kg`);
+            toast(`New PR on ${exerciseName}! ${fmtWeight(weightForLog, weightUnit)}`);
             resetForm();
             setShowAddModal(false);
             return;
@@ -751,7 +798,7 @@ export default function GymPage() {
     setExerciseName(exercise.exercise_name);
     setMuscleGroups(exercise.muscle_groups || []);
     setIsCardio(exercise.is_cardio);
-    setExerciseSets([{ weight_kg: 0, reps: 0, notes: '' }]);
+    setExerciseSets([makeSet(0, 0, '', weightUnit)]);
     setCaloriesBurned(0);
     setNotes('');
     setMuscleInput('');
@@ -767,19 +814,15 @@ export default function GymPage() {
     // Populate sets from gym_log_sets if present, else reconstruct from legacy fields
     if (log.gym_log_sets && log.gym_log_sets.length > 0) {
       const sorted = [...log.gym_log_sets].sort((a, b) => a.set_number - b.set_number);
-      setExerciseSets(sorted.map(s => ({
-        weight_kg: s.weight_kg ?? 0,
-        reps: s.reps ?? 0,
-        notes: s.notes ?? '',
-      })));
+      setExerciseSets(sorted.map(s =>
+        makeSet(Number(s.weight_kg ?? 0), s.reps ?? 0, s.notes ?? '', weightUnit)
+      ));
     } else {
       const count = log.sets ?? 1;
       setExerciseSets(
-        Array.from({ length: count }, () => ({
-          weight_kg: log.weight_kg ?? 0,
-          reps: log.reps ?? 0,
-          notes: '',
-        }))
+        Array.from({ length: count }, () =>
+          makeSet(Number(log.weight_kg ?? 0), log.reps ?? 0, '', weightUnit)
+        )
       );
     }
 
@@ -844,7 +887,7 @@ export default function GymPage() {
       exercise_name: exerciseName,
       muscle_groups: isCardio ? [] : muscleGroups,
       is_cardio: isCardio,
-      sets: exerciseSets,
+      sets: exerciseSets.map(({ weight_kg, reps, notes }) => ({ weight_kg, reps, notes })),
       calories_burned: caloriesBurned,
       notes: notes || null,
     }];
@@ -888,8 +931,8 @@ export default function GymPage() {
     setIsCardio(ex.is_cardio || false);
     setExerciseSets(
       ex.sets && ex.sets.length > 0
-        ? ex.sets.map(s => ({ weight_kg: s.weight_kg || 0, reps: s.reps || 0, notes: s.notes || '' }))
-        : [{ weight_kg: 0, reps: 0, notes: '' }]
+        ? ex.sets.map(s => makeSet(Number(s.weight_kg || 0), s.reps || 0, s.notes || '', weightUnit))
+        : [makeSet(0, 0, '', weightUnit)]
     );
     setCaloriesBurned(ex.calories_burned || 0);
     setNotes(ex.notes || '');
@@ -1034,6 +1077,7 @@ export default function GymPage() {
   }
 
   return (
+    <WeightUnitContext.Provider value={weightUnit}>
     <div className="container-pixel">
 
       {/* ── Header ── */}
@@ -1117,8 +1161,8 @@ export default function GymPage() {
             <TrendingUp size={16} className="text-blue-500" />
             <p className="text-pixel-xs text-darkgray/70">Today's Tonnage</p>
           </div>
-          <p className="font-mono text-2xl font-bold">{dailyTonnage.toLocaleString()}</p>
-          <p className="font-mono text-xs text-darkgray/50">kg lifted</p>
+          <p className="font-mono text-2xl font-bold">{Math.round(kgToUnit(dailyTonnage, weightUnit)).toLocaleString()}</p>
+          <p className="font-mono text-xs text-darkgray/50">{weightUnit} lifted</p>
         </Card>
       </div>
       {/* ── Checklist (today only, only if logs exist) ── */}
@@ -1325,7 +1369,23 @@ export default function GymPage() {
 
             {/* Dynamic sets editor */}
             <div className="md:col-span-2">
-              <label className="block font-pixel text-sm mb-2 text-darkgray">Sets</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block font-pixel text-sm text-darkgray">Sets</label>
+                <div className="flex border-2 border-darkgray font-mono text-xs" role="group" aria-label="Weight unit">
+                  {(['kg', 'lbs'] as WeightUnit[]).map(u => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => changeWeightUnit(u)}
+                      className={`px-3 py-1 transition-all ${
+                        weightUnit === u ? 'bg-primary font-bold' : 'bg-white hover:bg-accent/30'
+                      }`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-2">
                 {exerciseSets.map((set, i) => (
                   <div key={i} className="flex items-center gap-2 p-2 border-2 border-darkgray bg-gray-50">
@@ -1333,14 +1393,22 @@ export default function GymPage() {
                       {i + 1}
                     </span>
                     <input
-                      type="number"
-                      value={set.weight_kg || ''}
-                      min={0}
-                      placeholder="kg"
+                      type="text"
+                      inputMode="decimal"
+                      value={set.weight_text}
+                      placeholder={weightUnit}
                       className="input-pixel w-20 text-sm"
                       onChange={e => {
+                        // Allow decimals like 12.5 (comma accepted as decimal point)
+                        const text = e.target.value.replace(',', '.');
+                        if (!/^\d*\.?\d*$/.test(text)) return;
+                        const num = parseFloat(text);
                         const updated = [...exerciseSets];
-                        updated[i] = { ...updated[i], weight_kg: parseFloat(e.target.value) || 0 };
+                        updated[i] = {
+                          ...updated[i],
+                          weight_text: text,
+                          weight_kg: isNaN(num) ? 0 : Number(unitToKg(num, weightUnit).toFixed(4)),
+                        };
                         setExerciseSets(updated);
                       }}
                     />
@@ -1368,9 +1436,23 @@ export default function GymPage() {
                         setExerciseSets(updated);
                       }}
                     />
+                    <button
+                      type="button"
+                      title="Duplicate set"
+                      aria-label="Duplicate set"
+                      onClick={() => {
+                        const updated = [...exerciseSets];
+                        updated.splice(i + 1, 0, { ...set });
+                        setExerciseSets(updated);
+                      }}
+                      className="p-1.5 border-2 border-darkgray bg-accent hover:bg-accent/70 shrink-0"
+                    >
+                      <Copy size={12} />
+                    </button>
                     {exerciseSets.length > 1 && (
                       <button
                         type="button"
+                        title="Remove set"
                         onClick={() => setExerciseSets(exerciseSets.filter((_, j) => j !== i))}
                         className="p-1.5 border-2 border-darkgray bg-warning hover:bg-warning/70 shrink-0"
                       >
@@ -1381,7 +1463,7 @@ export default function GymPage() {
                 ))}
                 <button
                   type="button"
-                  onClick={() => setExerciseSets([...exerciseSets, { weight_kg: 0, reps: 0, notes: '' }])}
+                  onClick={() => setExerciseSets([...exerciseSets, makeSet(0, 0, '', weightUnit)])}
                   className="flex items-center gap-2 px-3 py-2 border-2 border-darkgray bg-white hover:bg-accent/20 font-mono text-sm transition-all"
                 >
                   <Plus size={14} />
@@ -1506,7 +1588,7 @@ export default function GymPage() {
                       <p className="font-mono font-bold text-sm">{template.template_name}</p>
                       <p className="font-mono text-xs text-darkgray/50 mt-0.5">
                         {(ex.sets || []).length} set{(ex.sets || []).length !== 1 ? 's' : ''}
-                        {(ex.sets || []).some(s => s.weight_kg) && ` · ${Math.max(...(ex.sets || []).map(s => s.weight_kg || 0))} kg`}
+                        {(ex.sets || []).some(s => s.weight_kg) && ` · ${fmtWeight(Math.max(...(ex.sets || []).map(s => Number(s.weight_kg) || 0)), weightUnit)}`}
                       </p>
                       <div className="mt-1">
                         <MuscleTags groups={ex.muscle_groups || []} isCardio={ex.is_cardio || false} />
@@ -1577,7 +1659,7 @@ export default function GymPage() {
                         <p className="font-mono font-bold text-sm">{exercise.exercise_name}</p>
                         {lastWeightMap.has(exercise.exercise_name.trim().toLowerCase()) && (
                           <p className="font-mono text-xs text-darkgray/50 mt-0.5">
-                            Last: {lastWeightMap.get(exercise.exercise_name.trim().toLowerCase())} kg
+                            Last: {fmtWeight(lastWeightMap.get(exercise.exercise_name.trim().toLowerCase()), weightUnit)}
                           </p>
                         )}
                       </div>
@@ -1594,5 +1676,6 @@ export default function GymPage() {
       </Modal>
 
     </div>
+    </WeightUnitContext.Provider>
   );
 }
