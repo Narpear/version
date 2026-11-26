@@ -8,6 +8,7 @@ import { User, SkincareLog } from '@/types';
 import { Sparkles, TrendingUp, CheckCircle2, Sun, Moon, Dumbbell, Info, Smile, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useSwipe } from '@/hooks/useSwipe';
+import { parseLocalDate, toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 interface DailySkincare {
   date: string;
@@ -23,9 +24,9 @@ export default function SkincarePage() {
   const [loading, setLoading] = useState(true);
 
   // Date state
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayStr());
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const isToday = selectedDate === today;
 
   const routines = [
@@ -118,7 +119,7 @@ export default function SkincarePage() {
       // Get last 7 days for chart
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-      const startDate = sevenDaysAgo.toISOString().split('T')[0];
+      const startDate = toLocalDateStr(sevenDaysAgo);
 
       const { data: weekData } = await supabase
         .from('skincare_logs')
@@ -147,7 +148,7 @@ export default function SkincarePage() {
         for (let i = 0; i < 7; i++) {
           const date = new Date();
           date.setDate(date.getDate() - (6 - i));
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = toLocalDateStr(date);
           allDays.push({
             date: dateStr,
             completed_routines: dailyCompletion[dateStr] || 0
@@ -212,9 +213,9 @@ export default function SkincarePage() {
   };
 
   const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
+    const newDate = parseLocalDate(selectedDate);
     newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate.toISOString().split('T')[0]);
+    setSelectedDate(toLocalDateStr(newDate));
   };
 
   const { onTouchStart, onTouchEnd } = useSwipe(
@@ -257,7 +258,7 @@ export default function SkincarePage() {
           </button>
           <div className="text-center">
             <p className="font-mono text-lg">
-              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {selectedDate === today ? 'Today' : parseLocalDate(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
             <input
               type="date"
@@ -412,7 +413,7 @@ export default function SkincarePage() {
           {weeklyData.map((day) => {
             const dayHeight = (day.completed_routines / routines.length) * 100;
             const isDayToday = day.date === today;
-            const date = new Date(day.date);
+            const date = parseLocalDate(day.date);
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
             const allComplete = day.completed_routines === routines.length;
 

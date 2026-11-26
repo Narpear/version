@@ -10,6 +10,7 @@ import { User } from '@/types';
 import { Footprints, TrendingUp, CheckCircle2, Zap, Heart, Brain, Sun, Target, Activity, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { parseLocalDate, toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 interface DailySteps {
   date: string;
@@ -44,8 +45,8 @@ export default function StepsPage() {
   const [editingGoal, setEditingGoal] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const today = todayStr();
   const isToday = selectedDate === today;
 
   useEffect(() => {
@@ -94,7 +95,7 @@ export default function StepsPage() {
       // Load last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-      const startDate = sevenDaysAgo.toISOString().split('T')[0];
+      const startDate = toLocalDateStr(sevenDaysAgo);
 
       const { data: weekData } = await supabase
         .from('steps_logs')
@@ -108,7 +109,7 @@ export default function StepsPage() {
       for (let i = 0; i < 7; i++) {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = toLocalDateStr(d);
         const existing = weekData?.find(e => e.date === dateStr);
         allDays.push({
           date: dateStr,
@@ -188,9 +189,9 @@ export default function StepsPage() {
   };
 
   const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
+    const newDate = parseLocalDate(selectedDate);
     newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate.toISOString().split('T')[0]);
+    setSelectedDate(toLocalDateStr(newDate));
   };
 
   if (loading) {
@@ -269,7 +270,7 @@ export default function StepsPage() {
           </button>
           <div className="text-center">
             <p className="font-mono text-lg">
-              {isToday ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {isToday ? 'Today' : parseLocalDate(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
             <input
               type="date"

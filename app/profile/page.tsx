@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { Edit, X, Check, Trash2 } from 'lucide-react';
 import TrackerPicker from '@/components/TrackerPicker';
 import { useBgTheme, genderToBgTheme } from '@/lib/useTheme';
+import { todayStr } from '@/lib/dateUtils';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function ProfilePage() {
   const [goalType, setGoalType] = useState<'loss' | 'gain' | 'maintenance'>('loss');
   const [startWeight, setStartWeight] = useState(0);
   const [goalWeight, setGoalWeight] = useState(0);
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(todayStr());
 
   useEffect(() => {
     const userData = localStorage.getItem('user');

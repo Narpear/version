@@ -12,6 +12,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 import dynamic from 'next/dynamic';
+import { parseLocalDate, toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
   ssr: false,
@@ -89,7 +90,7 @@ export default function FoodPage() {
   const [newMealName, setNewMealName] = useState('');
   const [mealToSaveItems, setMealToSaveItems] = useState<FoodLog[]>([]);
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayStr());
 
   // Form state
   const [mealName, setMealName] = useState('');
@@ -105,7 +106,7 @@ export default function FoodPage() {
   const [mealSearch, setMealSearch] = useState('');
   const [weeklyNutrition, setWeeklyNutrition] = useState<DayNutrition[]>([]);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const isToday = selectedDate === today;
 
   useEffect(() => {
@@ -151,14 +152,14 @@ export default function FoodPage() {
       .from('food_logs')
       .select('date, calories, protein_g, carbs_g, fats_g')
       .eq('user_id', userId)
-      .gte('date', startDate.toISOString().split('T')[0])
-      .lte('date', endDate.toISOString().split('T')[0]);
+      .gte('date', toLocalDateStr(startDate))
+      .lte('date', toLocalDateStr(endDate));
 
     const byDate = new Map<string, DayNutrition>();
     for (let i = 0; i < 7; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
-      const ds = d.toISOString().split('T')[0];
+      const ds = toLocalDateStr(d);
       byDate.set(ds, {
         date: ds,
         displayDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -604,9 +605,9 @@ export default function FoodPage() {
   };
 
   const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
+    const newDate = parseLocalDate(selectedDate);
     newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate.toISOString().split('T')[0]);
+    setSelectedDate(toLocalDateStr(newDate));
   };
 
   const fetchProductData = async (barcode: string) => {
@@ -730,7 +731,7 @@ export default function FoodPage() {
           </button>
           <div className="text-center">
             <p className="font-mono text-lg">
-              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {selectedDate === today ? 'Today' : parseLocalDate(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
             <input
               type="date"

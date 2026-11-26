@@ -10,6 +10,7 @@ import { User, DailyEntry, Goal } from '@/types';
 import { calculateEnergyChange, calculateProgress, getProgressColor, getDeficitColor } from '@/lib/calculations';
 import { Utensils, Dumbbell, Droplet, TrendingUp, Target, Flame } from 'lucide-react';
 import Link from 'next/link';
+import { toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 export default function HomePage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [streak, setStreak] = useState(0);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -111,23 +112,23 @@ export default function HomePage() {
         return;
       }
 
-      const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+      const toDateStr = (d: Date) => toLocalDateStr(d);
       const today = new Date();
-      const todayStr = toDateStr(today);
+      const todayKey = toDateStr(today);
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = toDateStr(yesterday);
 
       // Streak is broken unless today or yesterday was logged (yesterday keeps
       // the streak alive until today's activity is logged)
-      if (!activeDates.has(todayStr) && !activeDates.has(yesterdayStr)) {
+      if (!activeDates.has(todayKey) && !activeDates.has(yesterdayStr)) {
         setStreak(0);
         return;
       }
 
       // Walk backward day-by-day counting consecutive active dates
       let currentStreak = 0;
-      const cursor = activeDates.has(todayStr) ? new Date(today) : new Date(yesterday);
+      const cursor = activeDates.has(todayKey) ? new Date(today) : new Date(yesterday);
       while (activeDates.has(toDateStr(cursor))) {
         currentStreak++;
         cursor.setDate(cursor.getDate() - 1);

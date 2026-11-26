@@ -16,6 +16,7 @@ import {
 import { useToast } from '@/components/ui/ToastProvider';
 import { recalculateGoalCumulatives } from '@/lib/goalUtils';
 import GymHeatmap from '@/components/GymHeatmap';
+import { parseLocalDate, toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 const MUSCLE_COLORS: Record<string, string> = {
   // CHEST (red)
@@ -436,7 +437,7 @@ export default function GymPage() {
   const [editingWorkout, setEditingWorkout] = useState<GymLog | null>(null);
 
   // Date
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const [selectedDate, setSelectedDate] = useState(today);
   const isToday = selectedDate === today;
 
@@ -591,7 +592,7 @@ export default function GymPage() {
       const day = d.getDay();
       const diff = day === 0 ? -6 : 1 - day;
       d.setDate(d.getDate() + diff);
-      const weekStart = d.toISOString().split('T')[0];
+      const weekStart = toLocalDateStr(d);
       const { data } = await supabase
         .from('gym_logs')
         .select('*, gym_log_sets(*)')
@@ -966,9 +967,9 @@ export default function GymPage() {
   };
 
   const changeDate = (days: number) => {
-    const d = new Date(selectedDate);
+    const d = parseLocalDate(selectedDate);
     d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(toLocalDateStr(d));
   };
 
   const addMuscleTag = (val: string) => {

@@ -5,6 +5,7 @@ import Card from '@/components/ui/Card';
 import { supabase } from '@/lib/supabase';
 import { DailyEntry, Goal } from '@/types';
 import { Target, Award, Flame, Calendar, Dumbbell, Footprints, Sparkles } from 'lucide-react';
+import { parseLocalDate, toLocalDateStr } from '@/lib/dateUtils';
 
 interface WeeklySummaryProps {
   userId: string;
@@ -33,8 +34,8 @@ export default function WeeklySummary({ userId, selectedTrackers = ['food', 'gym
       const today = new Date();
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 6);
-      const startDate = sevenDaysAgo.toISOString().split('T')[0];
-      const endDate = today.toISOString().split('T')[0];
+      const startDate = toLocalDateStr(sevenDaysAgo);
+      const endDate = toLocalDateStr(today);
 
       const [
         { data: goalData },
@@ -147,7 +148,7 @@ export default function WeeklySummary({ userId, selectedTrackers = ['food', 'gym
   }
 
   let currentStreak = 0;
-  const sortedData = [...weekData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sortedData = [...weekData].sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
   for (const entry of sortedData) {
     const hasActivity = entry.total_calories_in > 0 || entry.total_calories_out > 0 || entry.water_glasses > 0;
     if (hasActivity) currentStreak++;

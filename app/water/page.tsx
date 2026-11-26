@@ -9,6 +9,7 @@ import { User } from '@/types';
 import { Droplet, TrendingUp, Sparkles, Info, Brain, Zap, Heart, Target, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
 import { useSwipe } from '@/hooks/useSwipe';
+import { parseLocalDate, toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 interface DailyWater {
   date: string;
@@ -25,9 +26,9 @@ export default function WaterPage() {
   const [saving, setSaving] = useState(false);
 
   // Date state
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayStr());
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const isToday = selectedDate === today;
   const maxGlasses = 8;
 
@@ -101,7 +102,7 @@ export default function WaterPage() {
       // Get last 7 days for the chart
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-      const startDate = sevenDaysAgo.toISOString().split('T')[0];
+      const startDate = toLocalDateStr(sevenDaysAgo);
 
       const { data: weekData } = await supabase
         .from('daily_entries')
@@ -117,7 +118,7 @@ export default function WaterPage() {
         for (let i = 0; i < 7; i++) {
           const date = new Date();
           date.setDate(date.getDate() - (6 - i));
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = toLocalDateStr(date);
           const existing = weekData.find(d => d.date === dateStr);
           allDays.push({
             date: dateStr,
@@ -189,9 +190,9 @@ export default function WaterPage() {
   };
 
   const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
+    const newDate = parseLocalDate(selectedDate);
     newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate.toISOString().split('T')[0]);
+    setSelectedDate(toLocalDateStr(newDate));
   };
 
   const { onTouchStart, onTouchEnd } = useSwipe(
@@ -224,7 +225,7 @@ export default function WaterPage() {
           </button>
           <div className="text-center">
             <p className="font-mono text-lg">
-              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {selectedDate === today ? 'Today' : parseLocalDate(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
             <input
               type="date"
@@ -364,7 +365,7 @@ export default function WaterPage() {
           {weeklyData.map((day) => {
             const dayHeight = (day.water_glasses / maxGlasses) * 100;
             const isDayToday = day.date === today;
-            const date = new Date(day.date);
+            const date = parseLocalDate(day.date);
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
 
             return (

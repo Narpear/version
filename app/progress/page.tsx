@@ -21,6 +21,7 @@ import {
 } from '@/lib/calculations';
 import { RefreshCw, TrendingDown, Info, Lightbulb, Target, Calendar, Scale, Zap, AlertCircle, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastProvider';
+import { parseLocalDate, toLocalDateStr, todayStr } from '@/lib/dateUtils';
 
 export default function ProgressPage() {
   const router = useRouter();
@@ -134,9 +135,9 @@ export default function ProgressPage() {
   const [selectedWeight, setSelectedWeight] = useState(0);
 
   // Date state
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(todayStr());
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayStr();
   const isToday = selectedDate === today;
 
   useEffect(() => {
@@ -281,7 +282,7 @@ export default function ProgressPage() {
         const formattedData = historyData.map((entry) => ({
           date: entry.date,
           weight: entry.weight_kg,
-          displayDate: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          displayDate: parseLocalDate(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         }));
         setWeightHistory(formattedData);
       }
@@ -392,9 +393,9 @@ export default function ProgressPage() {
   };
 
   const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
+    const newDate = parseLocalDate(selectedDate);
     newDate.setDate(newDate.getDate() + days);
-    setSelectedDate(newDate.toISOString().split('T')[0]);
+    setSelectedDate(toLocalDateStr(newDate));
   };
 
   if (loading) {
@@ -440,15 +441,15 @@ export default function ProgressPage() {
     if (!activeGoal || activeGoal.goal_type === 'maintenance') return null;
 
     const windowDays = 21;
-    const cutoff = new Date(today);
+    const cutoff = parseLocalDate(today);
     cutoff.setDate(cutoff.getDate() - windowDays);
-    const cutoffStr = cutoff.toISOString().split('T')[0];
+    const cutoffStr = toLocalDateStr(cutoff);
     const points = weightHistory.filter(h => h.date >= cutoffStr && h.weight != null);
 
     if (points.length < 3) return { status: 'insufficient' as const };
 
-    const x0 = new Date(points[0].date).getTime();
-    const xs = points.map(p => (new Date(p.date).getTime() - x0) / 86400000);
+    const x0 = parseLocalDate(points[0].date).getTime();
+    const xs = points.map(p => (parseLocalDate(p.date).getTime() - x0) / 86400000);
     const ys = points.map(p => Number(p.weight));
     const n = xs.length;
     const sumX = xs.reduce((a, b) => a + b, 0);
@@ -468,7 +469,7 @@ export default function ProgressPage() {
     if (!movingTowardGoal) return { status: 'diverging' as const, slopePerDay, remaining };
 
     const daysNeeded = remaining / slopePerDay;
-    const etaDate = new Date(today);
+    const etaDate = parseLocalDate(today);
     etaDate.setDate(etaDate.getDate() + Math.round(daysNeeded));
 
     return {
@@ -532,7 +533,7 @@ export default function ProgressPage() {
           </button>
           <div className="text-center">
             <p className="font-mono text-lg">
-              {selectedDate === today ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {selectedDate === today ? 'Today' : parseLocalDate(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
             <input
               type="date"
@@ -561,7 +562,7 @@ export default function ProgressPage() {
           <div className="flex-1">
             <Input
               type="number"
-              label={`Weight for ${isToday ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (kg)`}
+              label={`Weight for ${isToday ? 'Today' : parseLocalDate(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (kg)`}
               value={selectedWeight}
               onChange={(e) => setSelectedWeight(parseFloat(e.target.value))}
               placeholder="Enter your weight"

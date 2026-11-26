@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Goal } from '@/types';
+import { parseLocalDate } from '@/lib/dateUtils';
 
 interface WeightDataPoint {
   date: string;
@@ -41,18 +42,18 @@ function aggregateData(data: WeightDataPoint[], mode: ViewMode) {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - (mode === '90d' ? 90 : 30));
     return data
-      .filter(d => new Date(d.date) >= cutoff)
+      .filter(d => parseLocalDate(d.date) >= cutoff)
       .map(d => ({ ...d, displayDate: d.displayDate }));
   }
 
   if (mode === 'weekly_year') {
     const cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
-    const filtered = data.filter(d => new Date(d.date) >= cutoff);
+    const filtered = data.filter(d => parseLocalDate(d.date) >= cutoff);
 
     const groups: Record<string, number[]> = {};
     filtered.forEach(d => {
-      const key = getISOWeek(new Date(d.date));
+      const key = getISOWeek(parseLocalDate(d.date));
       if (!groups[key]) groups[key] = [];
       groups[key].push(d.weight);
     });
@@ -75,7 +76,7 @@ function aggregateData(data: WeightDataPoint[], mode: ViewMode) {
     if (mode === 'monthly_year') {
       const cutoff = new Date();
       cutoff.setFullYear(cutoff.getFullYear() - 1);
-      filtered = data.filter(d => new Date(d.date) >= cutoff);
+      filtered = data.filter(d => parseLocalDate(d.date) >= cutoff);
     }
 
     const groups: Record<string, number[]> = {};

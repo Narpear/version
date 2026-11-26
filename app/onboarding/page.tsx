@@ -9,6 +9,7 @@ import TrackerPicker from '@/components/TrackerPicker';
 import { supabase } from '@/lib/supabase';
 import { calculateGoalEnergyNeeded, calculateDailyTargetKcal } from '@/lib/calculations';
 import { genderToBgTheme } from '@/lib/useTheme';
+import { todayStr } from '@/lib/dateUtils';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function OnboardingPage() {
           .insert({
             user_id: user.id,
             goal_type: goalType,
-            start_date: new Date().toISOString().split('T')[0],
+            start_date: todayStr(),
             start_weight_kg: startWeight,
             goal_weight_kg: goalWeight,
             daily_target_kcal: dailyTarget,
